@@ -1,0 +1,15 @@
+# Baseline MLP for UCI Adult Income.
+#   python -m api.train --config api/configs/baseline.yaml
+# Every hyperparameter is explicit so the run is reproducible from this file.
+# Artifacts are written to models/<name>/.
+name: baseline
+architecture: mlp
+hidden_sizes: [64, 32]        # at least two hidden layers
+activation: relu              # relu | gelu | tanh | leaky_relu | silu
+dropout: 0.1
+learning_rate: 0.001
+weight_decay: 0.0001          # AdamW decoupled weight decay
+epochs: 30                    # maximum budget
+batch_size: 256
+seed: 42
+early_stopping_patience: 5    # stop after 5 epochs without val-loss improvement; null = off

@@ -20,6 +20,8 @@ from typing import List, Optional
 
 from supabase import Client, create_client
 
+from shared.features import FEATURE_COLS, TARGET_LABEL
+
 _client: Optional[Client] = None
 
 # Columns returned to callers as a "run" (metrics only, no model blob).
@@ -46,6 +48,40 @@ def ping() -> bool:
         return True
     except Exception:
         return False
+
+
+# ---------------------------------------------------------------------------
+# adult_income + training runs (real Adult schema; used by api/train.py)
+# ---------------------------------------------------------------------------
+# Only what training needs: no sex/race, which are not model inputs.
+_ADULT_TRAINING_COLS = ",".join(["id", "split", TARGET_LABEL, *FEATURE_COLS])
+
+
+def fetch_adult_income(page_size: int = 1000) -> List[dict]:
+    """Return the training columns of every adult_income row, ordered by id.
+
+    PostgREST caps each response (1000 rows by default on Supabase), so page
+    through with range() until an empty page comes back.
+    """
+    client = get_client()
+    rows: List[dict] = []
+    while True:
+        resp = (
+            client.table("adult_income")
+            .select(_ADULT_TRAINING_COLS)
+            .order("id")
+            .range(len(rows), len(rows) + page_size - 1)
+            .execute()
+        )
+        if not resp.data:
+            return rows
+        rows.extend(resp.data)
+
+
+def insert_training_run(row: dict) -> dict:
+    """Insert one completed training run (built by api.train.build_run_row)."""
+    resp = get_client().table("runs").insert(row).execute()
+    return resp.data[0]
 
 
 # ---------------------------------------------------------------------------
