@@ -14,3 +14,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Downloaded datasets
+data/raw/
