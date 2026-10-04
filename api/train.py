@@ -138,8 +138,11 @@ class PreparedData:
     ids: Dict[str, Optional[np.ndarray]]  # split -> adult_income.id (for later audit logging)
 
 
-def load_adult_income() -> pd.DataFrame:
-    """Read the training columns of every adult_income row from Supabase."""
+def load_adult_income(split: Optional[str] = None) -> pd.DataFrame:
+    """Read the training columns of adult_income rows from Supabase.
+
+    Every row by default; pass ``split`` to read only that split.
+    """
     from dotenv import load_dotenv
 
     load_dotenv(REPO_ROOT / ".env")
@@ -147,7 +150,7 @@ def load_adult_income() -> pd.DataFrame:
         raise SystemExit("Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env first.")
     from api import db
 
-    return pd.DataFrame(db.fetch_adult_income())
+    return pd.DataFrame(db.fetch_adult_income(split=split))
 
 
 def prepare_splits(df: pd.DataFrame) -> PreparedData:

@@ -1,0 +1,180 @@
+{
+  "method": "temperature",
+  "fitted_on_split": "val",
+  "temperature": 1.0238292128031385,
+  "nll_before": 0.3155746509800234,
+  "nll_after": 0.31551698512086845,
+  "split": "val",
+  "n": 7327,
+  "n_bins": 10,
+  "binning": "uniform",
+  "brier_before": 0.1020380975663249,
+  "brier_after": 0.10201631883606818,
+  "ece_before": 0.008811402623877794,
+  "ece_after": 0.01057234653768555,
+  "bins_before": [
+    {
+      "bin": 0,
+      "lower": 0.0,
+      "upper": 0.1,
+      "count": 3668,
+      "mean_predicted": 0.021216461368653898,
+      "fraction_positive": 0.021810250817884406
+    },
+    {
+      "bin": 1,
+      "lower": 0.1,
+      "upper": 0.2,
+      "count": 734,
+      "mean_predicted": 0.1479145476600654,
+      "fraction_positive": 0.17574931880108993
+    },
+    {
+      "bin": 2,
+      "lower": 0.2,
+      "upper": 0.3,
+      "count": 545,
+      "mean_predicted": 0.2517499529804717,
+      "fraction_positive": 0.25871559633027524
+    },
+    {
+      "bin": 3,
+      "lower": 0.3,
+      "upper": 0.4,
+      "count": 533,
+      "mean_predicted": 0.34975235938049326,
+      "fraction_positive": 0.30956848030018763
+    },
+    {
+      "bin": 4,
+      "lower": 0.4,
+      "upper": 0.5,
+      "count": 386,
+      "mean_predicted": 0.44463886333578145,
+      "fraction_positive": 0.43523316062176165
+    },
+    {
+      "bin": 5,
+      "lower": 0.5,
+      "upper": 0.6,
+      "count": 321,
+      "mean_predicted": 0.5515250054434443,
+      "fraction_positive": 0.5327102803738317
+    },
+    {
+      "bin": 6,
+      "lower": 0.6,
+      "upper": 0.7,
+      "count": 327,
+      "mean_predicted": 0.6488708924326589,
+      "fraction_positive": 0.6483180428134556
+    },
+    {
+      "bin": 7,
+      "lower": 0.7,
+      "upper": 0.8,
+      "count": 306,
+      "mean_predicted": 0.7501638257100897,
+      "fraction_positive": 0.738562091503268
+    },
+    {
+      "bin": 8,
+      "lower": 0.8,
+      "upper": 0.9,
+      "count": 222,
+      "mean_predicted": 0.8464840031935513,
+      "fraction_positive": 0.8333333333333334
+    },
+    {
+      "bin": 9,
+      "lower": 0.9,
+      "upper": 1.0,
+      "count": 285,
+      "mean_predicted": 0.966955673909738,
+      "fraction_positive": 0.968421052631579
+    }
+  ],
+  "bins_after": [
+    {
+      "bin": 0,
+      "lower": 0.0,
+      "upper": 0.1,
+      "count": 3617,
+      "mean_predicted": 0.021609648989142523,
+      "fraction_positive": 0.019353055017970695
+    },
+    {
+      "bin": 1,
+      "lower": 0.1,
+      "upper": 0.2,
+      "count": 751,
+      "mean_predicted": 0.14738764493807352,
+      "fraction_positive": 0.170439414114514
+    },
+    {
+      "bin": 2,
+      "lower": 0.2,
+      "upper": 0.3,
+      "count": 550,
+      "mean_predicted": 0.2507398621435233,
+      "fraction_positive": 0.26181818181818184
+    },
+    {
+      "bin": 3,
+      "lower": 0.3,
+      "upper": 0.4,
+      "count": 549,
+      "mean_predicted": 0.3491973564846328,
+      "fraction_positive": 0.2987249544626594
+    },
+    {
+      "bin": 4,
+      "lower": 0.4,
+      "upper": 0.5,
+      "count": 399,
+      "mean_predicted": 0.44444218944564473,
+      "fraction_positive": 0.44360902255639095
+    },
+    {
+      "bin": 5,
+      "lower": 0.5,
+      "upper": 0.6,
+      "count": 327,
+      "mean_predicted": 0.5512300809493563,
+      "fraction_positive": 0.5321100917431193
+    },
+    {
+      "bin": 6,
+      "lower": 0.6,
+      "upper": 0.7,
+      "count": 335,
+      "mean_predicted": 0.6486639973467796,
+      "fraction_positive": 0.6567164179104478
+    },
+    {
+      "bin": 7,
+      "lower": 0.7,
+      "upper": 0.8,
+      "count": 302,
+      "mean_predicted": 0.7492912510658993,
+      "fraction_positive": 0.7417218543046358
+    },
+    {
+      "bin": 8,
+      "lower": 0.8,
+      "upper": 0.9,
+      "count": 218,
+      "mean_predicted": 0.8449277379522836,
+      "fraction_positive": 0.8256880733944955
+    },
+    {
+      "bin": 9,
+      "lower": 0.9,
+      "upper": 1.0,
+      "count": 279,
+      "mean_predicted": 0.9662195560513221,
+      "fraction_positive": 0.974910394265233
+    }
+  ],
+  "note": "validation 'after' numbers are in-sample; see evaluation.json for test"
+}

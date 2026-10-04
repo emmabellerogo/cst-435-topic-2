@@ -1,0 +1,11 @@
+{
+  "method": "temperature",
+  "format_version": 1,
+  "temperature": 1.0238292128031385,
+  "fitted_on_split": "val",
+  "n_fit": 7327,
+  "nll_before": 0.3155746509800234,
+  "nll_after": 0.31551698512086845,
+  "decision_threshold": 0.5,
+  "formula": "p = sigmoid(logit / temperature)"
+}

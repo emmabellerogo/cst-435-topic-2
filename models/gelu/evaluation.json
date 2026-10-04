@@ -1,0 +1,220 @@
+{
+  "split": "test",
+  "n": 7327,
+  "threshold": 0.5,
+  "positive_class": ">50K",
+  "calibration_method": "temperature",
+  "temperature": 1.0238292128031385,
+  "metrics": {
+    "loss": 0.319028071708789,
+    "loss_calibrated": 0.3189113546391916,
+    "accuracy": 0.853964787771257,
+    "precision": 0.7321549966009517,
+    "recall": 0.61437535653166,
+    "f1": 0.6681141439205955,
+    "roc_auc": 0.9059950741063912,
+    "threshold": 0.5,
+    "n": 7327
+  },
+  "confusion_matrix": [
+    [
+      5180,
+      394
+    ],
+    [
+      676,
+      1077
+    ]
+  ],
+  "confusion_matrix_layout": "[[TN, FP], [FN, TP]]: rows = true class, columns = predicted class; 0 = '<=50K', 1 = '>50K'",
+  "per_class": {
+    "<=50K": {
+      "label": 0,
+      "precision": 0.8845628415300546,
+      "recall": 0.9293146752780768,
+      "f1": 0.9063867016622922,
+      "support": 5574
+    },
+    ">50K": {
+      "label": 1,
+      "precision": 0.7321549966009517,
+      "recall": 0.61437535653166,
+      "f1": 0.6681141439205955,
+      "support": 1753
+    }
+  },
+  "calibration": {
+    "n": 7327,
+    "n_bins": 10,
+    "binning": "uniform",
+    "brier_before": 0.10139955065203526,
+    "brier_after": 0.1014117701364427,
+    "ece_before": 0.00997011270071722,
+    "ece_after": 0.009930263506564002,
+    "bins_before": [
+      {
+        "bin": 0,
+        "lower": 0.0,
+        "upper": 0.1,
+        "count": 3646,
+        "mean_predicted": 0.020960249775614885,
+        "fraction_positive": 0.023861766319253977
+      },
+      {
+        "bin": 1,
+        "lower": 0.1,
+        "upper": 0.2,
+        "count": 745,
+        "mean_predicted": 0.14840438961812027,
+        "fraction_positive": 0.15570469798657718
+      },
+      {
+        "bin": 2,
+        "lower": 0.2,
+        "upper": 0.3,
+        "count": 575,
+        "mean_predicted": 0.24894071404723778,
+        "fraction_positive": 0.21913043478260869
+      },
+      {
+        "bin": 3,
+        "lower": 0.3,
+        "upper": 0.4,
+        "count": 497,
+        "mean_predicted": 0.3486916393180137,
+        "fraction_positive": 0.3682092555331992
+      },
+      {
+        "bin": 4,
+        "lower": 0.4,
+        "upper": 0.5,
+        "count": 393,
+        "mean_predicted": 0.4509338192297189,
+        "fraction_positive": 0.4173027989821883
+      },
+      {
+        "bin": 5,
+        "lower": 0.5,
+        "upper": 0.6,
+        "count": 341,
+        "mean_predicted": 0.54838656165302,
+        "fraction_positive": 0.5483870967741935
+      },
+      {
+        "bin": 6,
+        "lower": 0.6,
+        "upper": 0.7,
+        "count": 330,
+        "mean_predicted": 0.6479202671964914,
+        "fraction_positive": 0.6121212121212121
+      },
+      {
+        "bin": 7,
+        "lower": 0.7,
+        "upper": 0.8,
+        "count": 293,
+        "mean_predicted": 0.7508020583598787,
+        "fraction_positive": 0.764505119453925
+      },
+      {
+        "bin": 8,
+        "lower": 0.8,
+        "upper": 0.9,
+        "count": 217,
+        "mean_predicted": 0.8429236403486359,
+        "fraction_positive": 0.8433179723502304
+      },
+      {
+        "bin": 9,
+        "lower": 0.9,
+        "upper": 1.0,
+        "count": 290,
+        "mean_predicted": 0.9653077161513994,
+        "fraction_positive": 0.9689655172413794
+      }
+    ],
+    "bins_after": [
+      {
+        "bin": 0,
+        "lower": 0.0,
+        "upper": 0.1,
+        "count": 3597,
+        "mean_predicted": 0.021382388606830727,
+        "fraction_positive": 0.022518765638031693
+      },
+      {
+        "bin": 1,
+        "lower": 0.1,
+        "upper": 0.2,
+        "count": 751,
+        "mean_predicted": 0.1473557118286885,
+        "fraction_positive": 0.151797603195739
+      },
+      {
+        "bin": 2,
+        "lower": 0.2,
+        "upper": 0.3,
+        "count": 594,
+        "mean_predicted": 0.24807779647701395,
+        "fraction_positive": 0.21212121212121213
+      },
+      {
+        "bin": 3,
+        "lower": 0.3,
+        "upper": 0.4,
+        "count": 514,
+        "mean_predicted": 0.34898086725547334,
+        "fraction_positive": 0.36964980544747084
+      },
+      {
+        "bin": 4,
+        "lower": 0.4,
+        "upper": 0.5,
+        "count": 400,
+        "mean_predicted": 0.4511660974942076,
+        "fraction_positive": 0.4125
+      },
+      {
+        "bin": 5,
+        "lower": 0.5,
+        "upper": 0.6,
+        "count": 345,
+        "mean_predicted": 0.5478788368220866,
+        "fraction_positive": 0.5478260869565217
+      },
+      {
+        "bin": 6,
+        "lower": 0.6,
+        "upper": 0.7,
+        "count": 336,
+        "mean_predicted": 0.6468546082901137,
+        "fraction_positive": 0.6190476190476191
+      },
+      {
+        "bin": 7,
+        "lower": 0.7,
+        "upper": 0.8,
+        "count": 298,
+        "mean_predicted": 0.7502155103727395,
+        "fraction_positive": 0.7684563758389261
+      },
+      {
+        "bin": 8,
+        "lower": 0.8,
+        "upper": 0.9,
+        "count": 214,
+        "mean_predicted": 0.8439388314024289,
+        "fraction_positive": 0.8411214953271028
+      },
+      {
+        "bin": 9,
+        "lower": 0.9,
+        "upper": 1.0,
+        "count": 278,
+        "mean_predicted": 0.9658736947451363,
+        "fraction_positive": 0.9748201438848921
+      }
+    ]
+  },
+  "predictions_path": "models/gelu/test_predictions.csv"
+}

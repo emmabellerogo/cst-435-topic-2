@@ -57,22 +57,20 @@ def ping() -> bool:
 _ADULT_TRAINING_COLS = ",".join(["id", "split", TARGET_LABEL, *FEATURE_COLS])
 
 
-def fetch_adult_income(page_size: int = 1000) -> List[dict]:
-    """Return the training columns of every adult_income row, ordered by id.
+def fetch_adult_income(page_size: int = 1000, split: Optional[str] = None) -> List[dict]:
+    """Return the training columns of adult_income rows, ordered by id.
 
-    PostgREST caps each response (1000 rows by default on Supabase), so page
-    through with range() until an empty page comes back.
+    ``split`` ('train' | 'val' | 'test') restricts the read to one split; the
+    default reads every row. PostgREST caps each response (1000 rows by default
+    on Supabase), so page through with range() until an empty page comes back.
     """
     client = get_client()
     rows: List[dict] = []
     while True:
-        resp = (
-            client.table("adult_income")
-            .select(_ADULT_TRAINING_COLS)
-            .order("id")
-            .range(len(rows), len(rows) + page_size - 1)
-            .execute()
-        )
+        query = client.table("adult_income").select(_ADULT_TRAINING_COLS)
+        if split is not None:
+            query = query.eq("split", split)
+        resp = query.order("id").range(len(rows), len(rows) + page_size - 1).execute()
         if not resp.data:
             return rows
         rows.extend(resp.data)
@@ -82,6 +80,12 @@ def insert_training_run(row: dict) -> dict:
     """Insert one completed training run (built by api.train.build_run_row)."""
     resp = get_client().table("runs").insert(row).execute()
     return resp.data[0]
+
+
+def fetch_run_names() -> List[str]:
+    """Names of every row already in ``runs`` (used to refuse duplicate inserts)."""
+    resp = get_client().table("runs").select("name").execute()
+    return [r["name"] for r in resp.data]
 
 
 # ---------------------------------------------------------------------------
