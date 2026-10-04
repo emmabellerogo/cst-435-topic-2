@@ -15,7 +15,7 @@ read on 2026-10-04.
 | Calibration | Temperature scaling, **T = 1.0238**, fitted on the validation split after training, with the weights frozen |
 | Output | Calibrated probability p = σ(z / T); label `>50K` when p ≥ 0.5 (fixed threshold, never tuned) |
 | Artifacts | `models/gelu/model.pt`, `preprocessor.joblib`, `calibrator.json`; served read-only by the FastAPI service on Render |
-| Owners | Emma Rogoveanu (data, training, evaluation, API) and Komal (Streamlit UI). CST-435 Topic 2 team project |
+| Owners | Emma Rogoveanu (data, training, evaluation, API, final UI fixes) and Komal Khan (initial Streamlit UI). CST-435 Topic 2 team project; built with AI assistance (see `ai-documentation/`) |
 
 ## Intended use
 
