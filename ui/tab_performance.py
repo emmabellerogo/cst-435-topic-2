@@ -16,6 +16,10 @@ import ui_services as svc
 from perf_data import PerformanceDataError
 
 CLASS_NAMES = ["<=50K", ">50K"]
+SPLIT_LABELS = {"train": "train", "val": "validation", "test": "test"}
+SPLIT_METRICS = [("loss", "BCE loss (uncalibrated, lower is better)"), ("accuracy", "accuracy"),
+                 ("precision", "precision (>50K)"), ("recall", "recall (>50K)"),
+                 ("f1", "F1 (>50K)"), ("roc_auc", "ROC-AUC")]
 
 
 def confusion_frame(cm: List[List[int]]) -> pd.DataFrame:
@@ -70,6 +74,41 @@ def reliability_chart(df: pd.DataFrame) -> alt.Chart:
     return (diag + lines).properties(height=320)
 
 
+def curves_frame(epochs: List[dict], metric: str) -> pd.DataFrame:
+    """Long frame of train and validation values of one metric, by epoch."""
+    rows = []
+    for e in epochs:
+        for split in ("train", "val"):
+            value = e.get(f"{split}_{metric}")
+            if value is not None:
+                rows.append({"epoch": int(e["epoch"]), "split": SPLIT_LABELS[split], metric: value})
+    return pd.DataFrame(rows)
+
+
+def curve_chart(df: pd.DataFrame, metric: str, title: str, best_epoch: Optional[int]) -> alt.Chart:
+    lines = alt.Chart(df).mark_line(point=True).encode(
+        x=alt.X("epoch:Q", title="epoch", axis=alt.Axis(tickMinStep=1)),
+        y=alt.Y(f"{metric}:Q", title=title, scale=alt.Scale(zero=False)),
+        color=alt.Color("split:N", title=None,
+                        scale=alt.Scale(domain=["train", "validation"], range=["#2b7bb9", "#e67e22"])),
+        tooltip=["epoch", "split", alt.Tooltip(f"{metric}:Q", format=".4f")],
+    )
+    if best_epoch is None:
+        return lines.properties(height=260)
+    rule = alt.Chart(pd.DataFrame({"epoch": [best_epoch]})).mark_rule(
+        strokeDash=[4, 4], color="gray").encode(x="epoch:Q")
+    return (lines + rule).properties(height=260)
+
+
+def split_comparison_frame(splits: dict) -> pd.DataFrame:
+    """One row per metric, one column per split, from the stored metrics only."""
+    rows = []
+    for key, name in SPLIT_METRICS:
+        rows.append({"metric": name, **{SPLIT_LABELS[s]: (splits.get(s) or {}).get(key)
+                                         for s in ("train", "val", "test")}})
+    return pd.DataFrame(rows, columns=["metric", "train", "validation", "test"])
+
+
 def experiments_frame(experiments: List[dict]) -> pd.DataFrame:
     rows = []
     for rank, e in enumerate(experiments, start=1):
@@ -88,6 +127,27 @@ def experiments_frame(experiments: List[dict]) -> pd.DataFrame:
             "val ROC-AUC": e["val_roc_auc"],
         })
     return pd.DataFrame(rows)
+
+
+def experiments_chart(experiments: List[dict]) -> alt.Chart:
+    """Validation loss per config on a zoomed y-axis.
+
+    The axis does not start at 0 (the losses differ only in the 4th decimal),
+    so the bars must be clipped: unclipped, each bar still extends down to 0,
+    far outside the plot, and Streamlit's fit-to-width sizing then collapses the
+    plot area to nothing.
+    """
+    chart_df = pd.DataFrame({"config": [e["name"] for e in experiments],
+                             "validation loss": [e["val_loss"] for e in experiments],
+                             "selected": [e["selected"] for e in experiments]})
+    lo = min(chart_df["validation loss"]) * 0.995
+    hi = max(chart_df["validation loss"]) * 1.003
+    return alt.Chart(chart_df).mark_bar(clip=True).encode(
+        x=alt.X("config:N", sort=None, title=None, axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("validation loss:Q", scale=alt.Scale(domain=[lo, hi], zero=False)),
+        color=alt.condition(alt.datum.selected, alt.value("#2b7bb9"), alt.value("#b0b0b0")),
+        tooltip=["config", alt.Tooltip("validation loss:Q", format=".4f")],
+    ).properties(height=240)
 
 
 def accuracy_note(experiments: List[dict]) -> Optional[str]:
@@ -144,6 +204,9 @@ def render() -> None:
         "(1.0 is perfect, 0.5 is random). Precision: of the people predicted >50K, the share "
         "who really are. Recall: of the people who really are >50K, the share the model finds."
     )
+
+    render_split_comparison(perf)
+    render_learning_curves(perf)
 
     # -- confusion matrix ------------------------------------------------------
     cm = perf.get("confusion_matrix")
@@ -230,21 +293,9 @@ def render() -> None:
         note = accuracy_note(experiments)
         if note:
             st.info(note)
-        chart_df = pd.DataFrame({"config": [e["name"] for e in experiments],
-                                 "validation loss": [e["val_loss"] for e in experiments],
-                                 "selected": [e["selected"] for e in experiments]})
-        lo = min(chart_df["validation loss"]) * 0.995
-        hi = max(chart_df["validation loss"]) * 1.003
-        st.altair_chart(
-            alt.Chart(chart_df).mark_bar().encode(
-                x=alt.X("config:N", sort=None, title=None),
-                y=alt.Y("validation loss:Q", scale=alt.Scale(domain=[lo, hi], zero=False)),
-                color=alt.condition(alt.datum.selected, alt.value("#2b7bb9"), alt.value("#b0b0b0")),
-                tooltip=["config", alt.Tooltip("validation loss:Q", format=".4f")],
-            ).properties(height=240),
-            use_container_width=True,
-        )
-        spread = max(chart_df["validation loss"]) - min(chart_df["validation loss"])
+        st.altair_chart(experiments_chart(experiments), use_container_width=True)
+        losses = [e["val_loss"] for e in experiments]
+        spread = max(losses) - min(losses)
         st.caption(f"The y-axis is zoomed in: the best and worst validation losses differ by only "
                    f"{spread:.4f}, so the configurations perform almost the same.")
 
@@ -267,3 +318,66 @@ def render() -> None:
                    "with the target, and the drop in ROC-AUC was measured. A bigger drop means the "
                    "model relies on that feature more. This shows what the model uses, not what "
                    "causes income.")
+
+
+def render_split_comparison(perf: dict) -> None:
+    splits = perf.get("splits") or {}
+    sel = perf["selected"]
+    st.subheader(f"Train / validation / test comparison ({sel['name']})")
+    if not any(splits.get(s) for s in ("train", "val", "test")):
+        st.info("The stored results for this run do not include per-split metrics, so the "
+                "comparison cannot be shown.")
+        return
+    st.dataframe(split_comparison_frame(splits), hide_index=True, use_container_width=True,
+                 column_config={c: st.column_config.NumberColumn(format="%.4f")
+                                for c in ("train", "validation", "test")})
+    missing = [SPLIT_LABELS[s] for s in ("train", "val", "test") if not splits.get(s)]
+    note = (f"All three columns describe the same saved checkpoint (best epoch "
+            f"{sel['best_epoch']}), scored in evaluation mode (dropout off) at threshold 0.5 on "
+            "the uncalibrated probability. Train and validation values were recorded during "
+            "training; the test column was computed once, after the model was selected. "
+            "Temperature scaling does not change the predicted labels or the ranking, so "
+            "accuracy, precision, recall, F1 and ROC-AUC are the same after calibration.")
+    cal_loss = (splits.get("test") or {}).get("loss_calibrated")
+    if cal_loss is not None:
+        note += f" Test BCE loss after calibration: {cal_loss:.4f}."
+    if missing:
+        note += f" Not stored for: {', '.join(missing)}."
+    st.caption(note)
+    train, val, test = (splits.get(s) or {} for s in ("train", "val", "test"))
+    if train.get("accuracy") is not None and test.get("accuracy") is not None:
+        gap = train["accuracy"] - test["accuracy"]
+        st.write(
+            f"Train accuracy is {gap:+.4f} relative to test"
+            + (f" and validation is {val['accuracy'] - test['accuracy']:+.4f}"
+               if val.get("accuracy") is not None else "")
+            + ". A small gap like this means the network is not badly overfitting: it does "
+            "about as well on people it never trained on as on the training rows."
+            if abs(gap) < 0.02 else
+            f"Train accuracy is {gap:+.4f} relative to test, a noticeable gap that suggests "
+            "some overfitting to the training rows."
+        )
+
+
+def render_learning_curves(perf: dict) -> None:
+    hist = perf.get("history") or {}
+    sel = perf["selected"]
+    st.subheader("Learning curves (train vs validation, by epoch)")
+    if not hist.get("available"):
+        st.info(f"Per-epoch history is unavailable for this run: {hist.get('detail') or 'not saved'}. "
+                "No curves are drawn rather than inventing them.")
+        return
+    epochs = hist["epochs"]
+    best = sel.get("best_epoch")
+    left, right = st.columns(2)
+    left.altair_chart(curve_chart(curves_frame(epochs, "loss"), "loss", "BCE loss", best),
+                      use_container_width=True)
+    right.altair_chart(curve_chart(curves_frame(epochs, "accuracy"), "accuracy", "accuracy", best),
+                       use_container_width=True)
+    st.caption(
+        f"Source: {hist['detail']}. Both curves are measured after each epoch in evaluation "
+        "mode (dropout off) on the full train and validation splits. The dashed line marks "
+        f"epoch {best}, the lowest validation loss, whose weights were kept; training ran "
+        f"{len(epochs)} epochs in total. The test set is not shown here because it was never "
+        "looked at during training."
+    )

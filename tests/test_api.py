@@ -386,3 +386,50 @@ def test_audit_supabase_failure_is_a_clear_503(client):
     resp = client.get("/audit")
     assert resp.status_code == 503
     assert "v_fairness_audit" in resp.json()["detail"]["message"]
+
+
+# ---------------------------------------------------------------------------
+# UI <-> API contract: the Score CSV template and the reference profile
+# ---------------------------------------------------------------------------
+REFERENCE_PROBA = 0.815338791378  # calibrated P(>50K) of the reference profile, run 3 (gelu)
+
+
+def test_reference_profile_is_over_50k_at_the_documented_probability(client):
+    body = client.post("/predict", json={"features": REFERENCE}).json()
+    assert body["income"] == ">50K" and body["label"] == 1
+    assert body["proba"] == pytest.approx(REFERENCE_PROBA, abs=1e-3)
+    assert (body["run_id"], body["calibration_method"], body["logged"]) == (GELU_RUN_ID, "temperature", True)
+
+
+def test_ui_template_csv_is_accepted_and_scored_like_score_a_row(client):
+    import sys
+
+    from tests.ui_fakes import UI_DIR
+
+    if str(UI_DIR) not in sys.path:
+        sys.path.insert(0, str(UI_DIR))
+    import tab_score_csv
+
+    template = tab_score_csv.template_csv(client.get("/schema").json())
+    assert pd.read_csv(io.BytesIO(template), dtype=str).iloc[0].to_dict() == {
+        k: str(v) for k, v in REFERENCE.items()}
+    resp = _upload(client, template)
+    assert resp.status_code == 200, resp.text
+    (pred,) = resp.json()["predictions"]
+    assert pred["income"] == ">50K"
+    assert pred["proba"] == pytest.approx(REFERENCE_PROBA, abs=1e-3)
+
+
+def test_predict_batch_row_limit_and_row_count_preservation(client):
+    from api.main import MAX_BATCH_ROWS
+
+    rows = [REFERENCE, YOUNG] * 50
+    body = _upload(client, _csv(rows)).json()
+    assert body["n_rows"] == len(body["predictions"]) == body["logged"] == 100
+    assert [p["row"] for p in body["predictions"]] == list(range(1, 101))
+    assert [p["label"] for p in body["predictions"][:2]] == [1, 0]
+
+    logged = len(client.fake.predictions)
+    resp = _upload(client, _csv([REFERENCE] * (MAX_BATCH_ROWS + 1)))
+    assert resp.status_code == 413
+    assert len(client.fake.predictions) == logged  # nothing scored or logged

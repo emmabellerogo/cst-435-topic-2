@@ -83,13 +83,30 @@ def hand_built_xor(X: np.ndarray = XOR_X) -> Dict[str, np.ndarray]:
     return {"W1": W1, "b1": b1, "W2": W2, "b2": b2, "A1": A1, "H1": H1, "out": out}
 
 
+def xor_table(hb: Dict[str, np.ndarray]) -> pd.DataFrame:
+    """The hand-built network's values, one plain Python int per cell (no NumPy reprs)."""
+    def col(a):
+        return [int(v) for v in np.asarray(a).tolist()]
+    return pd.DataFrame({
+        "x1": col(XOR_X[:, 0]),
+        "x2": col(XOR_X[:, 1]),
+        "a1 = x1 + x2": col(hb["A1"][:, 0]),
+        "a2 = x1 + x2 − 1": col(hb["A1"][:, 1]),
+        "h1 = ReLU(a1)": col(hb["H1"][:, 0]),
+        "h2 = ReLU(a2)": col(hb["H1"][:, 1]),
+        "output h1 − 2·h2": col(hb["out"][:, 0]),
+        "XOR target": col(XOR_Y[:, 0]),
+    })
+
+
 def train_xor(activation: str = "GELU", hidden: int = 4, lr: float = 0.5,
               epochs: int = 3000, seed: int = 0) -> Tuple[List[float], np.ndarray]:
     """Full-batch gradient descent on XOR with a 2-hidden-1 network.
 
-    Forward:  A1 = X W1 + b1,  H1 = act(A1),  z = H1 W2 + b2,  p = sigmoid(z)
-    Loss:     mean binary cross-entropy
-    Backward: dz = (p - y)/n,  dW2 = H1^T dz,  dA1 = (dz W2^T) * act'(A1),  dW1 = X^T dA1
+    Forward:  A1 = X W1 + b1,  H1 = act(A1),  z = H1 W2 + b2,  q = sigmoid(z)
+    Loss:     mean binary cross-entropy of q
+    Backward: dz = (q - y)/n,  dW2 = H1^T dz,  dA1 = (dz W2^T) * act'(A1),  dW1 = X^T dA1
+    (No temperature here: like any training run, it uses the plain sigmoid.)
     Returns (loss per epoch, final probabilities for the 4 inputs).
     """
     act, act_grad = ACTS[activation]
@@ -150,6 +167,24 @@ def layer_shapes(n_in: int, hidden: List[int]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def gradient_shapes(n_in: int, hidden: List[int]) -> pd.DataFrame:
+    """Shape of every backpropagation quantity, output layer first (the order it is computed)."""
+    widths = list(hidden) + [1]
+    ins = [n_in] + list(hidden)
+    names = ["X"] + [f"H{i}" for i in range(1, len(hidden) + 1)]
+    rows = []
+    for i in range(len(widths), 0, -1):
+        h, prev, src = widths[i - 1], ins[i - 1], names[i - 1]
+        is_out = i == len(widths)
+        rows.append({
+            "layer": f"output (layer {i})" if is_out else f"hidden {i}",
+            "error signal δ": f"δ{i} = " + ("∂L/∂z" if is_out else f"∂L/∂A{i}") + f": B × {h}",
+            "weight gradient": f"∂L/∂W{i} = {src}ᵀ δ{i}: ({prev} × B)(B × {h}) = {prev} × {h}",
+            "bias gradient": f"∂L/∂b{i} = column sums of δ{i}: {h}",
+        })
+    return pd.DataFrame(rows)
+
+
 def _model_shape(url: Optional[str]) -> Tuple[int, List[int], str, Optional[float]]:
     version = svc.try_version(url)
     model = (version or {}).get("model") or {}
@@ -185,16 +220,27 @@ def render(url: Optional[str]) -> None:
     )
     st.latex(r"A_1 = X W_1 + b_1, \qquad H_1 = \phi(A_1)")
     st.latex(r"A_2 = H_1 W_2 + b_2, \qquad H_2 = \phi(A_2)")
-    st.latex(r"z = H_2 W_3 + b_3, \qquad p = \sigma\!\left(\frac{z}{T}\right)")
+    st.latex(r"z = H_2 W_3 + b_3 \qquad (B \times 1\text{: one logit per row})")
     st.write(
-        f"Here φ is the activation function (this model uses **{act_name.upper()}**), σ is the "
-        "sigmoid σ(z) = 1 / (1 + e^(−z)), which squeezes any number into (0, 1), and T is the "
-        "temperature used for calibration"
-        + (f" (T ≈ {temperature:.4f})" if temperature else "")
-        + ". The bias vector b is added to every row (broadcasting). During training only, "
-        "**dropout** randomly zeroes 10% of the hidden values after each activation; it is "
-        "switched off when the API makes predictions."
+        f"Here φ is the activation function (this model uses **{act_name.upper()}**) and σ is "
+        "the sigmoid σ(u) = 1 / (1 + e^(−u)), which squeezes any number into (0, 1). The bias "
+        "vector b is added to every row (broadcasting). The logit z is turned into a "
+        "probability in two different ways, one while training and one when serving:"
     )
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Training** (fits the weights)")
+        st.latex(r"q = \sigma(z)")
+        st.caption("The plain sigmoid. The loss and every gradient below are written in terms "
+                   "of q. During training only, **dropout** randomly zeroes 10% of the hidden "
+                   "values after each activation.")
+    with right:
+        st.markdown("**Inference** (what the API returns)")
+        st.latex(r"p = \sigma\!\left(\frac{z}{T}\right)")
+        st.caption("The calibrated probability. T is fitted **after** training, on the "
+                   "validation set, with the weights frozen"
+                   + (f" (T ≈ {temperature:.4f})" if temperature else "")
+                   + ". Dropout is off.")
 
     st.markdown("**Matrix shapes for the model being served**")
     shapes = layer_shapes(n_in, hidden)
@@ -206,35 +252,42 @@ def render(url: Optional[str]) -> None:
     )
 
     # -- backpropagation ------------------------------------------------------
-    st.subheader("2. Backpropagation")
+    st.subheader("2. Backpropagation (training only)")
     st.write(
         "Training adjusts the weights to make the **binary cross-entropy (BCE)** loss small. "
-        "For labels y ∈ {0, 1} (1 means >50K) and predictions p:"
+        "For labels y ∈ {0, 1} (1 means >50K) and the training probability q = σ(z):"
     )
-    st.latex(r"\mathcal{L} = -\frac{1}{B}\sum_{i=1}^{B}\Big[y_i\log p_i + (1-y_i)\log(1-p_i)\Big]")
+    st.latex(r"\mathcal{L} = -\frac{1}{B}\sum_{i=1}^{B}\Big[y_i\log q_i + (1-y_i)\log(1-q_i)\Big]")
     st.write(
         "Backpropagation applies the chain rule from the output back to the input, reusing "
-        "each layer's result for the layer before it. With a sigmoid output and BCE loss, the "
-        "error signal at the output simplifies to p − y. Then, layer by layer (⊙ means "
-        "element-wise multiplication):"
+        "each layer's result for the layer before it. Because σ′(z) = q(1 − q), the sigmoid's "
+        "derivative cancels against the BCE's, and the error signal at the output is simply "
+        "q − y, averaged over the batch. Then, layer by layer (⊙ means element-wise "
+        "multiplication):"
     )
-    st.latex(r"\delta_3 = \frac{\partial \mathcal{L}}{\partial z} = \frac{1}{B}(p - y)"
+    st.latex(r"\delta_3 = \frac{\partial \mathcal{L}}{\partial z} = \frac{1}{B}(q - y)"
              r"\quad\Rightarrow\quad \frac{\partial \mathcal{L}}{\partial W_3} = H_2^{\top}\delta_3")
-    st.latex(r"\delta_2 = (\delta_3 W_3^{\top}) \odot \phi'(A_2)"
+    st.latex(r"\delta_2 = \frac{\partial \mathcal{L}}{\partial A_2} = (\delta_3 W_3^{\top}) \odot \phi'(A_2)"
              r"\quad\Rightarrow\quad \frac{\partial \mathcal{L}}{\partial W_2} = H_1^{\top}\delta_2")
-    st.latex(r"\delta_1 = (\delta_2 W_2^{\top}) \odot \phi'(A_1)"
+    st.latex(r"\delta_1 = \frac{\partial \mathcal{L}}{\partial A_1} = (\delta_2 W_2^{\top}) \odot \phi'(A_1)"
              r"\quad\Rightarrow\quad \frac{\partial \mathcal{L}}{\partial W_1} = X^{\top}\delta_1")
+    st.markdown("**Gradient shapes for the model being served** (computed output first)")
+    st.dataframe(gradient_shapes(n_in, hidden), hide_index=True, use_container_width=True)
     st.write(
         "Each bias gradient is the column sum of its δ. Every gradient has exactly the same "
         f"shape as the weight it updates: for example Xᵀ is ({n_in} × B) and δ₁ is (B × {h1}), "
-        f"so ∂L/∂W₁ is ({n_in} × {h1}), the same as W₁. The optimizer (AdamW) then moves each "
-        "weight a small step against its gradient. One pass over the training data is one "
-        "**epoch**; the saved model is the epoch with the lowest validation loss."
+        f"so ∂L/∂W₁ is ({n_in} × {h1}), the same as W₁. With dropout on, H₁ and H₂ are the "
+        "masked values and the same mask multiplies the δ flowing back through them. The "
+        "optimizer (AdamW) then moves each weight a small step against its gradient. One pass "
+        "over the training data is one **epoch**; the saved model is the epoch with the lowest "
+        "validation loss. (In PyTorch, `BCEWithLogitsLoss` takes z directly and applies "
+        "q = σ(z) inside the loss, which is numerically safer but gives the same gradient.)"
     )
     st.info(
-        "The temperature T is not learned by backpropagation. It is fitted afterwards on the "
-        "validation set, with the network's weights frozen, so that the probabilities are "
-        "honest. Dividing by T > 0 never changes which side of 0.5 a prediction falls on."
+        "Calibration happens afterwards and is separate. Once training has finished, the "
+        "weights are frozen and only T is fitted, by minimizing BCE of p = σ(z/T) on the "
+        "**validation** set. T never enters the backpropagation above. Dividing by T > 0 never "
+        "changes which side of 0.5 a prediction falls on, so it changes confidence, not labels."
     )
 
     # -- XOR ------------------------------------------------------------------
@@ -251,15 +304,7 @@ def render(url: Optional[str]) -> None:
              r"\quad \hat y = h_1 - 2h_2")
     st.latex(r"W_1 = \begin{bmatrix}1 & 1\\ 1 & 1\end{bmatrix},\; b_1 = \begin{bmatrix}0 & -1\end{bmatrix},"
              r"\; W_2 = \begin{bmatrix}1\\ -2\end{bmatrix},\; b_2 = 0")
-    xor_table = pd.DataFrame({
-        "x1": XOR_X[:, 0].astype(int),
-        "x2": XOR_X[:, 1].astype(int),
-        "A1 = X W1 + b1": [str(list(r.astype(int))) for r in hb["A1"]],
-        "H1 = ReLU(A1)": [str(list(r.astype(int))) for r in hb["H1"]],
-        "output H1 W2": hb["out"][:, 0].astype(int),
-        "XOR target": XOR_Y[:, 0].astype(int),
-    })
-    st.dataframe(xor_table, hide_index=True, use_container_width=True)
+    st.dataframe(xor_table(hb), hide_index=True, use_container_width=True)
     st.caption(
         "Shapes: X is 4 × 2, W1 is 2 × 2, so H1 is 4 × 2; W2 is 2 × 1, so the output is 4 × 1. "
         "The second hidden unit only switches on for (1, 1), and subtracting it twice "
@@ -282,11 +327,11 @@ def render(url: Optional[str]) -> None:
         use_container_width=True,
     )
     result = pd.DataFrame({
-        "x1": XOR_X[:, 0].astype(int),
-        "x2": XOR_X[:, 1].astype(int),
-        "target": XOR_Y[:, 0].astype(int),
-        "predicted probability": np.round(probs[:, 0], 3),
-        "predicted label (≥ 0.5)": (probs[:, 0] >= 0.5).astype(int),
+        "x1": [int(v) for v in XOR_X[:, 0].tolist()],
+        "x2": [int(v) for v in XOR_X[:, 1].tolist()],
+        "target": [int(v) for v in XOR_Y[:, 0].tolist()],
+        "predicted probability q": [round(float(v), 3) for v in probs[:, 0].tolist()],
+        "predicted label (q ≥ 0.5)": [int(v >= 0.5) for v in probs[:, 0].tolist()],
     })
     st.dataframe(result, hide_index=True, use_container_width=True)
     solved = bool(((probs[:, 0] >= 0.5).astype(int) == XOR_Y[:, 0].astype(int)).all())

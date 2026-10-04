@@ -1,139 +1,362 @@
-# Income-Insight — Three-Cloud Template (Tabular Classifier)
+# Income Insight
 
-> The same three-cloud architecture as the base template
-> (**Streamlit UI ⇄ FastAPI Model API ⇄ Supabase Data**), with the middle box
-> swapped for a **PyTorch MLP + sklearn preprocessing pipeline** doing tabular
-> binary classification. Start from *Regress-It*; the deploy steps are identical,
-> so follow the main
-> [three-cloud TUTORIAL](../three-cloud/TUTORIAL.md).
+**Will this person earn more than \$50K a year?** Income Insight answers that for
+one person or a whole spreadsheet in seconds, using a neural network trained on the
+real UCI *Adult Income* census data (48,842 people). Each answer comes with a
+calibrated probability, so "80%" really does mean about 80%. The app shows how the
+network works, how it was evaluated, and where it makes different kinds of mistakes
+for women and men. It is a CST-435 Topic 2 teaching project, not a tool for real
+hiring, lending or eligibility decisions.
 
-## Live deployment URLs (fill these in)
+## Live deployment
 
 | Tier | Platform | URL |
 |------|----------|-----|
-| **UI** | Streamlit Community Cloud | `https://<your-app>.streamlit.app` |
-| **API** | Render.com | `https://<your-api>.onrender.com` |
-| **Data** | Supabase | `https://<your-project-ref>.supabase.co` |
+| **Source** | GitHub | <https://github.com/emmabellerogo/cst-435-topic-2> |
+| **UI** | Streamlit Community Cloud | <https://cst-435-topic-2-oxbelz7s9ehhkfyfxkmpki.streamlit.app/> |
+| **API** | Render (FastAPI) | <https://income-insight-api-0n96.onrender.com> (try [`/healthz`](https://income-insight-api-0n96.onrender.com/healthz), [`/version`](https://income-insight-api-0n96.onrender.com/version), [`/docs`](https://income-insight-api-0n96.onrender.com/docs)) |
+| **Data** | Supabase Postgres | project ref `avdohphpqletgsoevrwm` (`https://avdohphpqletgsoevrwm.supabase.co`) |
 
-> Replace the placeholders with your real URLs once deployed.
+The Render free tier sleeps when idle, so the first request can take about a minute.
 
 ---
-
-## What it does
-
-Income-Insight predicts whether a person's income exceeds \$50K from a handful of
-tabular features (Adult-Income shaped, but **synthetic**). You pick the hidden
-width, learning rate, batch size, and epochs; the API standardizes the numeric
-features, one-hot-encodes the categoricals, trains an MLP with Adam + BCE loss,
-reports held-out **accuracy / precision / recall / F1 / ROC-AUC**, and persists
-every run. The UI lets you train, score individual records, review run history,
-and the API exposes a fairness `/audit` view over logged predictions.
-
-## What changed from the base template (the reusable pattern in action)
-
-The three-cloud split and the file layout are identical to *Regress-It*. Only the
-middle box changed:
-
-| Aspect | Regress-It | Income-Insight |
-|--------|------------|----------------|
-| Model | `nn.Linear(1,1)` + SGD | MLP (`Linear→ReLU→Linear`) + Adam |
-| Preprocessing | none | sklearn `ColumnTransformer` (scale + one-hot) |
-| Task | regression | binary classification |
-| Metrics | MSE / MAE / R² | accuracy / precision / recall / F1 / ROC-AUC |
-| Feature | one scalar `x` | a record of 7 named features |
-| Extra endpoints | — | `/predict_batch`, `/schema`, `/audit` |
-| Tables | datasets · runs · predictions | datasets · runs · **run_artifacts** · predictions |
-
-Everything else — UI as a thin client, API as the only writer, Supabase as the
-single source of truth, service-role vs anon keys, RLS on `runs`, the four test
-categories — is unchanged.
 
 ## Architecture
 
 ```
-┌──────────────────────┐   HTTPS/JSON    ┌──────────────────────────┐   service-role   ┌──────────────────┐
-│  Streamlit Cloud     │ ──────────────► │  FastAPI on Render        │ ───────────────► │  Supabase        │
-│  (ui/app.py)         │                 │  (api/main.py)            │   full access    │  Postgres        │
-│  thin client, no ML  │                 │  MLP + sklearn pipeline   │                  │  datasets/runs/  │
-│                      │ ◄────anon key,  │                          │                  │  run_artifacts/  │
-│                      │   read-only ────┼──────────────────────────┼──────────────────►│  predictions     │
-└──────────────────────┘   SELECT runs   └──────────────────────────┘                  │  (RLS: anon can  │
-                                                                                        │   only SELECT    │
-                                                                                        │   runs)          │
-                                                                                        └──────────────────┘
+┌────────────────────────────┐  HTTPS / JSON   ┌──────────────────────────────┐  service-role key  ┌──────────────────────────────┐
+│ Streamlit Community Cloud  │ ──────────────► │ FastAPI on Render            │ ─────────────────► │ Supabase Postgres            │
+│ ui/app.py (6 tabs)         │                 │ api/main.py                  │  reads + writes    │                              │
+│ thin client: no torch,     │                 │ frozen GELU MLP (run 3)      │                    │ adult_income  (48,842 rows)  │
+│ no sklearn, no model code  │                 │ + sklearn preprocessor       │                    │ runs          (3 runs)       │
+│                            │                 │ + temperature calibrator     │                    │ predictions   (audit log)    │
+│                            │                 │ loaded once from models/gelu │                    │ v_fairness_audit (SQL view)  │
+│                            │                 └──────────────────────────────┘                    │                              │
+│                            │ ── anon key, SELECT only: runs + v_fairness_audit ────────────────► │ RLS on every table           │
+└────────────────────────────┘                                                                     └──────────────────────────────┘
 ```
 
-## Project structure
+- **Streamlit (UI)** never loads the model. Every prediction is an HTTPS call to the API.
+  With the public **anon** key it may only `SELECT` from `runs` and from the aggregate
+  `v_fairness_audit` view. Without that key it falls back to the committed files in `models/`.
+- **FastAPI (Render)** serves one frozen model. It never trains. At startup it loads
+  `models/gelu/` and refuses to serve unless those files agree with the `is_best` row in
+  `runs`. It is the only component that writes to Supabase, using the service-role key.
+- **Supabase** is the system of record for the dataset, the runs and the prediction log.
+  FPR and FNR are computed in SQL by `v_fairness_audit`.
 
-```
-income-insight/
-├── README.md                 # This file
-├── MODEL_CARD.md             # Model details, fairness, limitations
-├── shared/
-│   ├── schemas.py            # Pydantic API contract
-│   └── data.py               # Synthetic Adult-Income generator + feature contract
-├── api/                      # FastAPI tier (deploys to Render)
-│   ├── main.py               # Endpoints
-│   ├── training.py           # MLP + sklearn ColumnTransformer, artifact (de)serialization
-│   ├── db.py                 # Supabase (service-role) data access
-│   ├── configs/default.yaml
-│   └── requirements.txt
-├── ui/
-│   ├── app.py                # 5-tab thin client (form built from /schema)
-│   ├── requirements.txt      # No torch / no sklearn
-│   └── .streamlit/secrets.toml.example
-├── db/
-│   ├── migrations/001_init.sql
-│   └── seed.py
-├── tests/                    # pytest suite
-├── render.yaml               # Render blueprint
-├── requirements-dev.txt
-└── .env.example
+## The six tabs
+
+| Tab | What it shows |
+|-----|---------------|
+| **Concepts** | Forward propagation and matrix shapes of the served 84 → 64 → 32 → 1 network. Training (q = σ(z), BCE) is kept separate from inference (p = σ(z/T)). Backpropagation with gradient shapes, a worked XOR example, an interactive XOR trainer, and ReLU vs GELU. |
+| **Score a Row** | A form built from the API's `/schema`. Returns the class, the calibrated probability and the logging status. |
+| **Score CSV** | Upload up to 5 MB / 10,000 rows to `/predict_batch` and download the scored file. Any invalid value rejects the whole file. |
+| **Model Performance** | Test metrics, a train/validation/test comparison, learning curves, confusion matrix, per-class metrics, calibration, the three-configuration comparison and permutation importance. |
+| **Bias Audit** | FPR/FNR by sex from `/audit` (SQL), the same view read directly with the anon key, an interpretation, and proposed mitigations (none implemented). |
+| **Model Card** | A one-page summary built from `/version`, `/schema`, `/audit` and the stored results (separate from, but consistent with, [MODEL_CARD.md](MODEL_CARD.md)). |
+
+## Data and preprocessing
+
+- **Dataset:** UCI *Adult* (Kohavi & Becker, 1994 U.S. Census extract). `db/load.py`
+  downloads `adult.data` and `adult.test` and combines them into **48,842 rows**. It
+  cleans the data (`?` → NULL, trailing `.` removed from test labels) and loads the
+  rows into `adult_income`.
+- **Split:** one fixed 70 / 15 / 15 split (seed 42), **stratified on income × sex**,
+  stored in the `split` column. The splits are **train 34,188 · validation 7,327 ·
+  test 7,327**, and every experiment uses this same split.
+- **Model inputs (10):** numeric `age`, `education_num`, `capital_gain`,
+  `capital_loss`, `hours_per_week`; categorical `workclass`, `marital_status`,
+  `occupation`, `relationship`, `native_country`.
+- **Not model inputs:** `sex` and `race` are protected attributes, kept only for the
+  audit. `education` duplicates `education_num`, and `fnlwgt` is a census sampling weight.
+- **Pipeline** (`api/preprocessing.py`), fitted on **train rows only** (the code refuses any other split):
+  - numeric columns: median imputation, then `StandardScaler`
+  - categorical columns: missing values become `"Unknown"`, then `OneHotEncoder(handle_unknown="ignore")`
+  - result: **84 encoded features**
+
+## Model, training and selection
+
+- **Architecture:** a PyTorch MLP, `[Linear → activation → Dropout] × N → Linear(1)`,
+  trained with `BCEWithLogitsLoss` and AdamW.
+- **Checkpoint choice:** after each epoch the model is scored on validation, and the
+  epoch with the **lowest validation loss** is kept. Early stopping uses patience 5.
+- **Selection rule (fixed in advance):** lowest validation BCE; ties go to the higher
+  validation ROC-AUC, then the config name. The test split played no part in
+  training, early stopping, checkpoint choice or model selection.
+
+### Three controlled configurations (validation set)
+
+Controlled across all three: same split and preprocessor, seed 42, learning rate 1e-3,
+weight decay 1e-4, batch size 256, 30-epoch budget, early-stopping patience 5,
+dropout 0.1. Each comparison against `baseline` changes exactly one thing.
+
+| Rank | Config | Hidden sizes | Activation | Best epoch | Val loss | Val acc | Val F1 (>50K) | Val ROC-AUC |
+|------|--------|--------------|------------|-----------:|---------:|--------:|--------------:|------------:|
+| 1 ✅ | `gelu` | [64, 32] | GELU | 18 | **0.3156** | 0.8534 | 0.6658 | 0.9070 |
+| 2 | `deep` | [128, 64, 32] | ReLU | 9 | 0.3158 | 0.8557 | 0.6639 | 0.9074 |
+| 3 | `baseline` | [64, 32] | ReLU | 18 | 0.3163 | 0.8567 | 0.6688 | 0.9074 |
+
+Source: `models/experiments/controlled_comparison.json`, also persisted as the three
+`runs` rows. `gelu` won on the pre-registered criterion, but the spread in validation
+loss is only 0.0007 from a single seed. The three configurations are effectively tied,
+and `baseline` has slightly higher validation accuracy. Only `gelu` was ever scored on
+test; the other runs' test columns are deliberately NULL.
+
+### SQL query for the runs comparison
+
+The table above was produced by `api/run_experiments.py` from the saved runs and then
+persisted by `api/persist_runs.py`. This query reproduces it from the `runs` table.
+Every column it uses was checked against `db/migrations/001_init.sql`, and its
+ordering, simulated over `models/experiments/runs_rows.json`, gives the ranking above.
+It has not been executed against the live database from this repository.
+
+```sql
+select
+    r.id,
+    r.name,
+    r.hidden_sizes,
+    r.activation,
+    r.dropout,
+    r.best_epoch,
+    round(r.val_loss::numeric, 4)                                       as val_loss,
+    round(r.val_accuracy::numeric, 4)                                   as val_accuracy,
+    round(((r.val_metrics ->> 'f1')::double precision)::numeric, 4)     as val_f1,
+    round(r.val_roc_auc::numeric, 4)                                    as val_roc_auc,
+    round(r.test_accuracy::numeric, 4)                                  as test_accuracy,  -- NULL except the selected run
+    round(r.test_roc_auc::numeric, 4)                                   as test_roc_auc,
+    r.is_best
+from runs r
+where r.name in ('baseline', 'gelu', 'deep')
+order by r.val_loss asc, r.val_roc_auc desc, r.name asc;
 ```
 
-## Quickstart (local)
+## Selected model: `gelu` (Supabase run 3)
+
+| | |
+|---|---|
+| Network | 84 → 64 → 32 → 1, GELU, dropout 0.1, 7,553 parameters, best epoch 18 |
+| Calibration | temperature scaling, **T = 1.0238**, fitted on the **validation** split only; served probability p = σ(z / T) |
+| Decision rule | `>50K` when p ≥ 0.5 (fixed, never tuned) |
+
+**Test set (7,327 rows, evaluated once after selection)**
+
+| Accuracy | ROC-AUC | Precision (>50K) | Recall (>50K) | F1 (>50K) | BCE (uncal. → cal.) |
+|---------:|--------:|-----------------:|--------------:|----------:|--------------------:|
+| 0.8540 | 0.9060 | 0.7322 | 0.6144 | 0.6681 | 0.3190 → 0.3189 |
+
+- **Confusion matrix** `[[TN, FP], [FN, TP]] = [[5180, 394], [676, 1077]]`. Per class,
+  `<=50K` has precision 0.8846, recall 0.9293, F1 0.9064 (support 5,574), and `>50K`
+  has precision 0.7322, recall 0.6144, F1 0.6681 (support 1,753).
+- **Train / validation / test** (same checkpoint, uncalibrated, threshold 0.5): the
+  accuracies are 0.8614 / 0.8534 / 0.8540 and the BCE values 0.2983 / 0.3156 / 0.3190.
+  That is a small generalization gap.
+- **Calibration on test:** ECE 0.0100 → 0.0099 and Brier 0.1014 → 0.1014. The network
+  was already well calibrated, so T stayed close to 1.
+- **Permutation importance** (test split, 10 repeats, mean drop in ROC-AUC):
+  1. `marital_status` 0.0549
+  2. `capital_gain` 0.0370
+  3. `age` 0.0335
+  4. `education_num` 0.0327
+  5. `occupation` 0.0175
+  6. `hours_per_week` 0.0138
+  7. `relationship` 0.0108
+  8. `capital_loss` 0.0051
+  9. `workclass` 0.0039
+  10. `native_country` 0.0016
+- **Reference profile:** a 45-year-old married, `Exec-managerial` husband in the
+  private sector working 45 hours, with education 13, no capital gain or loss, from
+  the United States. The model predicts **`>50K`, p ≈ 0.8153**. The value is frozen in
+  `tests/fixtures/reference_prediction.json` and checked by the tests.
+
+Sources: `models/gelu/run.json`, `evaluation.json`, `calibrator.json`,
+`permutation_importance.json`, `history.json`.
+
+## Fairness audit (SQL)
+
+`v_fairness_audit` joins `predictions` to `adult_income` and counts only predictions
+linked to a **labeled test row** (`adult_income_id` set, `split = 'test'`). It
+computes FPR = FP/(FP+TN) and FNR = FN/(FN+TP) per sex. All 7,327 test predictions of
+run 3 were logged for this purpose by `db/log_test_predictions.py`. Predictions made
+in the app have no true label and never enter these rates.
+
+The table below was read from the live `GET /audit` on 2026-10-04.
+
+| Group | Test rows | Actually >50K | TP | FP | TN | FN | FPR | FNR |
+|-------|----------:|--------------:|---:|---:|---:|---:|----:|----:|
+| Female | 2,429 | 265 (10.9%) | 155 | 58 | 2,106 | 110 | 0.0268 | **0.4151** |
+| Male | 4,898 | 1,488 (30.4%) | 922 | 336 | 3,074 | 566 | **0.0985** | 0.3804 |
+
+Women who earn >50K are missed more often (FNR 41.5% vs 38.0%). Men who earn ≤50K are
+wrongly flagged >50K more often (FPR 9.9% vs 2.7%). The model never sees `sex`, but
+`relationship` and `marital_status` act as proxies, and the base rates differ
+substantially. Possible mitigations are listed in [MODEL_CARD.md](MODEL_CARD.md);
+**none has been implemented**.
+
+## What is and is not persisted
+
+**Persisted**
+
+| Where | What |
+|-------|------|
+| Supabase `adult_income` | All 48,842 UCI rows, including `sex`/`race` (audit only) and the fixed `split` |
+| Supabase `runs` | One row per configuration (`deep`, `baseline`, `gelu`): hyperparameters, full config, train/val metrics. **Only `gelu` (id 3, `is_best`)** also has test metrics, calibration data, confusion matrix, per-class metrics, permutation importance and artifact paths |
+| Supabase `predictions` | One row per scored request from `/predict` and `/predict_batch`: `request_hash` (SHA-256 of the 10 feature values), `predicted_label`, `predicted_proba`, `served_by_run_id`, `created_at`. `adult_income_id` is NULL for app predictions and set only for the 7,327 labeled test predictions used by the audit |
+| Git, `models/<run>/` | `model.pt`, `preprocessor.joblib`, `history.json` (per-epoch train/val curves), `run.json`; for `gelu` also `calibrator.json`, `calibration.json`, `evaluation.json`, `permutation_importance.json`, `test_predictions.csv` |
+| Git, `models/experiments/` | `controlled_comparison.json/.csv`, `runs_rows.json` |
+
+**Not persisted**
+
+- Raw feature values of app predictions (only their hash). The hash is not
+  anonymization, because the input space is small enough to guess.
+- Uploaded CSV files and scored CSVs. These are returned to the browser only.
+- Any user identity, account or session. The app has no login.
+- Model weights and per-epoch histories in Supabase. These are in Git only, and the
+  API loads the weights from `models/gelu/`.
+- Anything from training: the API cannot train, and its retired `/train` and
+  `/datasets` endpoints no longer exist.
+
+## Setup (local)
+
+Requires Python 3.11 (Render uses 3.11.9).
 
 ```bash
-cd income-insight
-
+git clone https://github.com/emmabellerogo/cst-435-topic-2.git
+cd cst-435-topic-2
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.txt          # both tiers + pytest
 
-pytest -q            # 6 pass; the live-Supabase test skips without creds
-
-cp .env.example .env                                   # API: SUPABASE_URL + SERVICE key
-cp ui/.streamlit/secrets.toml.example ui/.streamlit/secrets.toml
-
-uvicorn api.main:app --reload --port 8000              # terminal 1
-streamlit run ui/app.py                                # terminal 2
+cp .env.example .env                         # SUPABASE_URL + SUPABASE_SERVICE_KEY (API / scripts only)
+cp ui/.streamlit/secrets.toml.example ui/.streamlit/secrets.toml   # API_URL (+ optional anon key)
 ```
 
-To deploy to the three clouds, follow **Part E** of the main
-[TUTORIAL](../three-cloud/TUTORIAL.md): apply
-`db/migrations/001_init.sql` in the Supabase SQL Editor → deploy the API from
-`render.yaml` on Render → deploy the UI on Streamlit Community Cloud.
+Never put the service-role key in the UI secrets; the UI uses only the anon key.
+
+**Run the two tiers** (the API writes prediction logs to the Supabase in `.env`):
+
+```bash
+uvicorn api.main:app --reload --port 8000 --env-file .env                 # terminal 1
+API_URL=http://localhost:8000 streamlit run ui/app.py                     # terminal 2, from the repo root
+```
+
+Optional API variables: `MODEL_DIR` (default `models/gelu`), `SERVED_RUN_ID` (pin a
+`runs.id`), `ALLOWED_ORIGINS` (CORS, default `*`). Optional UI variables:
+`SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+
+## Reproducing the pipeline
+
+Each step uses the service-role key from `.env`. The committed artifacts already
+contain the results, so **do not re-run these against the live project** unless you
+intend to replace them.
+
+```bash
+# 1. Database: paste db/migrations/001_init.sql into the Supabase SQL Editor and run it.
+python db/load.py --dry-run          # download + validate + split, no writes
+python db/load.py                    # load adult_income (refuses if not empty)
+
+# 2. Train the three controlled configurations (train + validation only)
+python -m api.run_experiments api/configs/baseline.yaml api/configs/gelu.yaml api/configs/deep.yaml
+#    single run:  python -m api.train --config api/configs/gelu.yaml
+
+# 3. Calibrate on validation, then evaluate the winner on test exactly once
+python -m api.evaluate_final --run gelu
+
+# 4. Persist the three runs rows (dry run first)
+python -m api.persist_runs
+python -m api.persist_runs --write
+
+# 5. Log the labeled test predictions so v_fairness_audit has data
+python -m db.log_test_predictions --dry-run
+python -m db.log_test_predictions
+```
+
+## Tests
+
+```bash
+pytest -q
+```
+
+The suite runs offline. Supabase is replaced by an in-memory fake, the API tests load
+the real `models/gelu/` artifacts, and the UI tests use Streamlit's `AppTest` with a
+fake API. `tests/test_supabase_roundtrip.py` is skipped unless Supabase credentials
+are set. The suite covers:
+
+- preprocessing (train-only fitting)
+- training and the experiment runner
+- calibration and the final evaluation
+- run persistence
+- the API contract, validation and logging
+- the frozen reference prediction
+- the UI tabs
+
+## Deployment
+
+1. **Supabase:** run `db/migrations/001_init.sql`, then steps 1, 4 and 5 above. This
+   enables RLS, revokes `anon`/`authenticated` access to the tables, and grants `anon`
+   `SELECT` on `runs` and `v_fairness_audit` only.
+2. **Render:** New → Blueprint → this repo (`render.yaml`). Set `SUPABASE_URL` and
+   `SUPABASE_SERVICE_KEY` as secret env vars. The health check is `/healthz`.
+3. **Streamlit Community Cloud:** main file `ui/app.py`. In Secrets set `API_URL` (the
+   Render URL), plus optionally `SUPABASE_URL` and `SUPABASE_ANON_KEY` (anon key only).
+   `.streamlit/config.toml` at the repo root sets the 5 MB upload limit.
 
 ## API endpoints
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/datasets` | Generate a synthetic tabular dataset |
-| `POST` | `/train` | Train the MLP, persist run + model artifact, return metrics |
-| `GET`  | `/runs/{run_id}` | Fetch one run |
-| `GET`  | `/runs` | List recent runs |
-| `POST` | `/predict` | Classify one record; log it |
-| `POST` | `/predict_batch` | Classify many records; log each |
-| `GET`  | `/schema` | Feature contract (drives the UI form) |
-| `GET`  | `/audit` | Positive-prediction rate grouped by a categorical feature |
-| `GET`  | `/healthz` | Liveness / DB ping |
-| `GET`  | `/version` | Build SHA + torch/sklearn versions |
+| `GET` | `/healthz` | Artifacts loaded, Supabase reachable, served run confirmed |
+| `GET` | `/version` | Served run, architecture, temperature, library versions, build SHA |
+| `GET` | `/schema` | The 10 input fields, ranges, training medians and allowed categories |
+| `POST` | `/predict` | One row → calibrated P(>50K), label, logged to `predictions` |
+| `POST` | `/predict_batch` | CSV upload (≤ 5 MB, ≤ 10,000 rows) → one logged prediction per row |
+| `GET` | `/audit` | FPR/FNR by sex for the served run, passed through from `v_fairness_audit` |
 
-## Checklist
+## Project structure
 
-- [ ] Three live URLs listed at the top of this README
-- [ ] `datasets`, `runs`, `run_artifacts`, `predictions` tables with RLS
-- [ ] 6+ API endpoints
-- [ ] 5 Streamlit tabs (Concepts, Train, Predict, Run History, Model Card)
-- [ ] MLP training with held-out accuracy/precision/recall/F1/ROC-AUC
-- [ ] pytest suite passing
-- [ ] `MODEL_CARD.md` completed
+```
+api/        FastAPI service (main.py, serving.py, db.py) and the offline pipeline
+            (preprocessing, model, train, run_experiments, calibration, evaluate_final, persist_runs)
+api/configs baseline.yaml · gelu.yaml · deep.yaml
+db/         migrations/001_init.sql · load.py · log_test_predictions.py
+shared/     features.py (feature contract) · schemas.py (API models)
+ui/         app.py + one module per tab, api_client.py, perf_data.py
+models/     committed artifacts for the three runs + experiments/
+tests/      pytest suite (offline)
+ai-documentation/   AI-use transcripts
+```
+
+Leftovers from the course template are still in the repo but are **not used** by the
+current app: `api/training.py`, `shared/data.py` (synthetic generator), `db/seed.py`
+and `api/configs/default.yaml`.
+
+---
+
+## Team
+
+### Emma Rogoveanu
+
+- **Individual report:** TODO: required before submission
+- **Video:** TODO: required before submission
+- **Contributions** (from the Git history; please confirm or expand):
+  - Adult Income schema, Supabase migration and loader (`db/migrations/001_init.sql`, `db/load.py`)
+  - Preprocessing pipeline and config-driven PyTorch training (`api/preprocessing.py`, `api/model.py`, `api/train.py`)
+  - Controlled experiment comparison (`api/run_experiments.py`, `api/configs/`)
+  - Calibration, final evaluation and run persistence (`api/calibration.py`, `api/evaluate_final.py`, `api/persist_runs.py`)
+  - Frozen GELU FastAPI serving backend (`api/main.py`, `api/serving.py`, `api/db.py`)
+  - Fairness-audit prediction loader (`db/log_test_predictions.py`)
+  - AI-use documentation (`ai-documentation/emma-*.md`)
+- **Task list:** TODO: required before submission
+
+### Komal (TODO: confirm full name)
+
+- **Individual report:** TODO: required before submission
+- **Video:** TODO: required before submission
+- **Contributions** (from the Git history; please confirm or expand):
+  - Six-tab Streamlit frontend (`ui/`)
+  - UI tests (`tests/test_ui_*.py`, `tests/ui_fakes.py`)
+  - AI-use documentation (`ai-documentation/komal-streamlit-session-01.md`)
+- **Task list:** TODO: required before submission
+
+## AI use
+
+Transcripts of the AI-assisted sessions are in [`ai-documentation/`](ai-documentation/).
