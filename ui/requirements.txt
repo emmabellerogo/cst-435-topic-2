@@ -1,6 +1,9 @@
 # UI tier (deployed on Streamlit Community Cloud)
 # No torch, no sklearn, no model code here -- a thin client on purpose.
+# altair and numpy (used for charts and the Concepts XOR demo) are installed
+# as dependencies of streamlit.
 streamlit==1.38.0
 requests==2.32.3
 pandas==2.2.2
+# Only for the read-only anon-key query of the runs table (Model Performance).
 supabase==2.7.4
