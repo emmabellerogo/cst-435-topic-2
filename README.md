@@ -363,7 +363,7 @@ happened on GitHub, Render, Streamlit Cloud or a local machine).
 ### Emma Rogoveanu
 
 - **Individual report:** [reports/emma-report.md](reports/emma-report.md)
-- **Video:** TODO: add individual demonstration video link before submission.
+- **Video:** <https://www.loom.com/share/2e1f5555063d4be2b7c983668f2c66b0>
 - **Contributions:**
   - Set up the team repository and the backend and data tier with Claude Code:
     - the Adult Income schema and Supabase loader
@@ -399,7 +399,7 @@ happened on GitHub, Render, Streamlit Cloud or a local machine).
   - [x] Verify the public app opens without signing in. Ⓔ
   - [x] Add the GitHub Actions test workflow with Claude Code and confirm its GitHub run passes. Ⓖ `db4bbf6`; passing run Ⓔ
   - [x] Finish and link Emma's individual report. [`reports/emma-report.md`](reports/emma-report.md)
-  - [ ] Record and link Emma's individual demonstration video.
+  - [x] Record and link Emma's individual demonstration video. [Loom](https://www.loom.com/share/2e1f5555063d4be2b7c983668f2c66b0)
   - [ ] Complete and verify Emma's AI-use records and contribution evidence.
 
 ### Komal Khan
