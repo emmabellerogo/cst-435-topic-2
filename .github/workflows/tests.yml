@@ -1,0 +1,55 @@
+# Runs the offline pytest suite on every push and pull request to main.
+#
+# No secrets are configured: Supabase is replaced by the in-memory FakeDB in
+# tests/conftest.py, the API tests load the committed models/gelu/ artifacts,
+# and the UI tests use Streamlit's AppTest with a fake API. The one live test
+# (tests/test_supabase_roundtrip.py) skips itself when SUPABASE_URL /
+# SUPABASE_SERVICE_KEY are absent, which is always the case here; -rs prints
+# that skip reason in the log.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            api/requirements.txt
+            ui/requirements.txt
+
+      # The PyPI torch wheel for Linux is the CUDA build (several GB of NVIDIA
+      # packages). Install the same pinned version from PyTorch's CPU-only index
+      # first; it satisfies the torch==X pin in api/requirements.txt below.
+      - name: Install CPU-only torch (version pinned in api/requirements.txt)
+        run: |
+          python -m pip install --upgrade pip
+          TORCH_PIN="$(grep -E '^torch==' api/requirements.txt)"
+          echo "Installing ${TORCH_PIN} (CPU build)"
+          pip install "${TORCH_PIN}" --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependencies (both tiers + test tools)
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q -rs
