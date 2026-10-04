@@ -1,0 +1,15 @@
+# Controlled comparison 3/3: architecture only.
+# Identical to baseline.yaml except hidden_sizes ([64, 32] -> [128, 64, 32]).
+#   python -m api.run_experiments api/configs/baseline.yaml api/configs/gelu.yaml api/configs/deep.yaml
+# Artifacts are written to models/<name>/.
+name: deep
+architecture: mlp
+hidden_sizes: [128, 64, 32]   # <- the only difference from baseline
+activation: relu              # same as baseline
+dropout: 0.1                  # same as baseline
+learning_rate: 0.001          # controlled
+weight_decay: 0.0001          # controlled
+epochs: 30                    # controlled maximum budget
+batch_size: 256               # controlled
+seed: 42                      # controlled
+early_stopping_patience: 5    # controlled

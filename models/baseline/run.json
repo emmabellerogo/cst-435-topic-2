@@ -1,0 +1,60 @@
+{
+  "name": "baseline",
+  "architecture": "mlp",
+  "hidden_sizes": [
+    64,
+    32
+  ],
+  "activation": "relu",
+  "dropout": 0.1,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "epochs": 30,
+  "best_epoch": 18,
+  "batch_size": 256,
+  "seed": 42,
+  "config": {
+    "name": "baseline",
+    "hidden_sizes": [
+      64,
+      32
+    ],
+    "activation": "relu",
+    "dropout": 0.1,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 30,
+    "batch_size": 256,
+    "seed": 42,
+    "early_stopping_patience": 5,
+    "architecture": "mlp"
+  },
+  "train_loss": 0.29045674204826355,
+  "val_loss": 0.31625938415527344,
+  "val_accuracy": 0.8566944179063737,
+  "val_roc_auc": 0.9074133204628858,
+  "test_accuracy": null,
+  "test_precision": null,
+  "test_recall": null,
+  "test_f1": null,
+  "test_roc_auc": null,
+  "train_metrics": {
+    "loss": 0.29045674204826355,
+    "accuracy": 0.8667661167661168,
+    "precision": 0.7727135980746089,
+    "recall": 0.6279183473902946,
+    "f1": 0.6928316137298537,
+    "roc_auc": 0.9234020692115054
+  },
+  "val_metrics": {
+    "loss": 0.31625938415527344,
+    "accuracy": 0.8566944179063737,
+    "precision": 0.748059280169372,
+    "recall": 0.6046776953793497,
+    "f1": 0.668769716088328,
+    "roc_auc": 0.9074133204628858
+  },
+  "test_metrics": {},
+  "checkpoint_path": "models/baseline/model.pt",
+  "preprocessor_path": "models/baseline/preprocessor.joblib"
+}

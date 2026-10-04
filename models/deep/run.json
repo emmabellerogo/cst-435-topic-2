@@ -1,0 +1,62 @@
+{
+  "name": "deep",
+  "architecture": "mlp",
+  "hidden_sizes": [
+    128,
+    64,
+    32
+  ],
+  "activation": "relu",
+  "dropout": 0.1,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "epochs": 30,
+  "best_epoch": 9,
+  "batch_size": 256,
+  "seed": 42,
+  "config": {
+    "name": "deep",
+    "hidden_sizes": [
+      128,
+      64,
+      32
+    ],
+    "activation": "relu",
+    "dropout": 0.1,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 30,
+    "batch_size": 256,
+    "seed": 42,
+    "early_stopping_patience": 5,
+    "architecture": "mlp"
+  },
+  "train_loss": 0.29092937707901,
+  "val_loss": 0.315801203250885,
+  "val_accuracy": 0.8557390473590828,
+  "val_roc_auc": 0.9073923404871981,
+  "test_accuracy": null,
+  "test_precision": null,
+  "test_recall": null,
+  "test_f1": null,
+  "test_roc_auc": null,
+  "train_metrics": {
+    "loss": 0.29092937707901,
+    "accuracy": 0.8655961155961156,
+    "precision": 0.7681723003290458,
+    "recall": 0.6277961129446278,
+    "f1": 0.690926212416762,
+    "roc_auc": 0.9232565436213198
+  },
+  "val_metrics": {
+    "loss": 0.315801203250885,
+    "accuracy": 0.8557390473590828,
+    "precision": 0.75,
+    "recall": 0.5955504848830576,
+    "f1": 0.6639109697933228,
+    "roc_auc": 0.9073923404871981
+  },
+  "test_metrics": {},
+  "checkpoint_path": "models/deep/model.pt",
+  "preprocessor_path": "models/deep/preprocessor.joblib"
+}
