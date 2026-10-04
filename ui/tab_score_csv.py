@@ -4,7 +4,11 @@ the scored rows.
 The API does all validation (required columns, numeric ranges, known
 categories) and rejects the whole file if any value is bad, so nothing is
 partly scored or logged. This tab shows the API's row-by-row errors and only
-adds a local preview and a heads-up about missing columns before sending.
+adds a local preview, a heads-up about missing columns, and the same size and
+row limits as the API (so an oversized file is stopped before it is sent).
+
+The uploader's own limit is set to the same 5 MB by server.maxUploadSize in
+.streamlit/config.toml (Streamlit 1.38 has no per-widget size argument).
 """
 from __future__ import annotations
 
@@ -17,9 +21,14 @@ import streamlit as st
 
 import ui_services as svc
 from api_client import ApiClient, ApiError
+from tab_score_row import example_value
 
 RESULT_KEY = "csv_last_result"
 PREDICTION_COLUMNS = ["predicted_income", "probability_over_50k", "predicted_label", "request_hash"]
+# Must equal api.main.MAX_UPLOAD_BYTES / MAX_BATCH_ROWS (checked by the tests).
+MAX_UPLOAD_MB = 5
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+MAX_ROWS = 10_000
 
 
 def required_columns(schema: dict) -> List[str]:
@@ -27,17 +36,26 @@ def required_columns(schema: dict) -> List[str]:
 
 
 def template_csv(schema: dict) -> bytes:
-    """A header with the required columns plus one example row of defaults."""
+    """A header with the required columns plus one valid example row.
+
+    The row is the Score a Row example profile, with any value the live
+    /schema does not allow replaced by that field's schema default.
+    """
     row = {}
     for f in schema.get("features", []):
         if f.get("name") in svc.PROTECTED_ATTRIBUTES:
             continue
-        if f.get("kind") == "numeric":
-            row[f["name"]] = f.get("default") if f.get("default") is not None else f.get("minimum")
-        else:
-            cats = [c for c in (f.get("categories") or []) if c != "Unknown"] or (f.get("categories") or [""])
-            row[f["name"]] = cats[0]
+        row[f["name"]] = example_value(f)
     return pd.DataFrame([row], columns=list(row)).to_csv(index=False).encode("utf-8")
+
+
+def limit_problem(n_bytes: int, n_rows: int) -> Optional[str]:
+    """The same size/row limits POST /predict_batch enforces, or None if the file fits."""
+    if n_bytes > MAX_UPLOAD_BYTES:
+        return f"The file is {n_bytes / (1024 * 1024):.1f} MB; the limit is {MAX_UPLOAD_MB} MB."
+    if n_rows > MAX_ROWS:
+        return f"The file has {n_rows:,} rows; the limit is {MAX_ROWS:,} rows per file."
+    return None
 
 
 def read_preview(content: bytes) -> pd.DataFrame:
@@ -90,8 +108,9 @@ def render(url: Optional[str]) -> None:
     required = required_columns(schema)
     st.markdown("**Required columns** (other columns are allowed and ignored): "
                 + ", ".join(f"`{c}`" for c in required))
-    st.caption("Limits: 5 MB and 10,000 rows per file. Numbers must be whole numbers within the "
-               "ranges shown on Score a Row; categories must match the allowed values exactly.")
+    st.caption(f"Limits: {MAX_UPLOAD_MB} MB and {MAX_ROWS:,} rows per file. Numbers must be whole "
+               "numbers within the ranges shown on Score a Row; categories must match the allowed "
+               "values exactly.")
     st.download_button("Download a template CSV", template_csv(schema),
                        file_name="income_insight_template.csv", mime="text/csv",
                        key="csv_template")
@@ -109,6 +128,11 @@ def render(url: Optional[str]) -> None:
         st.error(f"This file could not be read as a CSV: {e}")
         return
     st.write(f"**{upload.name}**: {len(preview):,} rows, {len(preview.columns)} columns")
+    too_big = limit_problem(len(content), len(preview))
+    if too_big:
+        st.error(f"{too_big} Split it into smaller files; nothing was sent to the API.")
+        st.session_state.pop(RESULT_KEY, None)
+        return
     st.dataframe(preview.head(20), use_container_width=True, hide_index=True)
     if len(preview) > 20:
         st.caption("Showing the first 20 rows.")

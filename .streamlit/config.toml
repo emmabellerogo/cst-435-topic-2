@@ -1,0 +1,10 @@
+# Streamlit app configuration (no secrets here).
+# Streamlit reads .streamlit/config.toml from the folder it is started in:
+# the repo root (`streamlit run ui/app.py`, Streamlit Community Cloud) uses
+# .streamlit/config.toml, and `cd ui && streamlit run app.py` uses
+# ui/.streamlit/config.toml. Keep both copies identical.
+
+[server]
+# Upload limit in MB for st.file_uploader (Streamlit's default is 200).
+# Matches the API's MAX_UPLOAD_BYTES (5 MB) on POST /predict_batch.
+maxUploadSize = 5

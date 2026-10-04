@@ -103,6 +103,22 @@ def get_performance() -> dict:
                         str(perf_data.default_models_dir()))
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _fairness_view(supabase_url: str, anon_key: str, run_id: int) -> list:
+    return perf_data.fetch_fairness_view(supabase_url, anon_key, run_id)
+
+
+def get_fairness_view(run_id: int) -> Optional[list]:
+    """v_fairness_audit rows read directly with the anon key; None when not configured.
+
+    Raises perf_data.UnsafeKeyError for a non-public key, or the client's error.
+    """
+    supabase_url, anon_key = get_setting("SUPABASE_URL"), get_setting("SUPABASE_ANON_KEY")
+    if not (supabase_url and anon_key):
+        return None
+    return _fairness_view(supabase_url, anon_key, int(run_id))
+
+
 def try_performance() -> Optional[dict]:
     try:
         return get_performance()

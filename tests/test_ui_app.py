@@ -110,3 +110,113 @@ def test_app_survives_when_the_api_is_down(run_app):
     assert not at.exception
     assert [t.label for t in at.tabs] == EXPECTED_TABS
     assert "Could not reach the API" in _all_text(at)
+
+
+# -- Score a Row: buttons and logging status ------------------------------------
+def _form_value(at, name):
+    for w in list(at.number_input) + list(at.selectbox):
+        if w.key == f"row_{name}":
+            return w.value
+    raise KeyError(name)
+
+
+def test_reset_and_example_buttons_refill_the_form(run_app):
+    at, _ = run_app()
+    at.button(key="row_reset").click().run()
+    assert not at.exception
+    assert _form_value(at, "age") == 37 and _form_value(at, "hours_per_week") == 40  # medians
+    assert _form_value(at, "workclass") == "Federal-gov"  # first known category
+    at.button(key="row_example").click().run()
+    assert _form_value(at, "age") == 45 and _form_value(at, "workclass") == "Private"
+    assert _form_value(at, "relationship") == "Husband"
+
+
+@pytest.mark.parametrize("logged, expected", [(True, "Logged to Supabase as request ffffffffffff"),
+                                               (False, "Not logged.")])
+def test_prediction_shows_class_probability_and_logging_status(run_app, logged, expected):
+    from tests.ui_fakes import PREDICT
+
+    body = {**PREDICT, "proba": 0.815338791378, "logged": logged}
+    at, _ = run_app({("POST", "/predict"): lambda **kw: FakeResponse(200, body)})
+    at.button(key="predict_row").click().run()
+    values = {m.label: m.value for m in at.metric}
+    assert values["Predicted income"] == ">50K"
+    assert values["Probability of >50K"] == "81.5%"
+    assert expected in _all_text(at)
+
+
+# -- Model Performance: curves and split comparison ------------------------------
+def test_performance_says_history_is_unavailable_instead_of_drawing_curves(run_app):
+    at, _ = run_app()  # the fixture files have no history.json
+    text = _all_text(at)
+    assert "Per-epoch history is unavailable" in text
+    assert "Learning curves" in [h.value.split(" (")[0] for h in at.subheader]
+
+
+def test_performance_shows_curves_and_split_table_from_the_real_files(run_app, monkeypatch):
+    from tests.ui_fakes import REPO_ROOT
+
+    monkeypatch.setenv("INCOME_INSIGHT_MODELS_DIR", str(REPO_ROOT / "models"))
+    at, _ = run_app()
+    assert not at.exception
+    text = _all_text(at)
+    assert "Per-epoch history is unavailable" not in text
+    assert "models/gelu/history.json" in text
+    subheaders = [h.value for h in at.subheader]
+    assert "Train / validation / test comparison (gelu)" in subheaders
+    split_table = next(d.value for d in at.dataframe
+                       if list(d.value.columns) == ["metric", "train", "validation", "test"])
+    assert split_table["test"].notna().all()
+    # the existing evaluation sections are still there
+    for name in ("Confusion matrix", "Per-class metrics", "Calibration",
+                 "Experiment comparison (validation set)", "Permutation importance (test set)"):
+        assert name in subheaders
+
+
+# -- Bias Audit: direct anon read ------------------------------------------------
+def test_bias_audit_direct_read_not_configured_is_explained(run_app):
+    at, _ = run_app()
+    assert "direct read was skipped" in _all_text(at)
+    assert "Possible mitigations (not implemented)" in [h.value for h in at.subheader]
+
+
+def test_bias_audit_direct_read_matches_audit(monkeypatch, tmp_path):
+    import perf_data
+    from tests.ui_fakes import AUDIT, runs_rows
+
+    calls = []
+
+    def fake_view(url, key, run_id):
+        calls.append((url, key, run_id))
+        return [dict(g, run_id=run_id) for g in AUDIT["groups"]]
+
+    monkeypatch.setattr(perf_data, "fetch_fairness_view", fake_view)
+    monkeypatch.setattr(perf_data, "fetch_runs_rows", lambda url, key: runs_rows())
+    monkeypatch.setenv("INCOME_INSIGHT_MODELS_DIR", str(write_model_files(tmp_path / "models")))
+    st.cache_data.clear()
+    monkeypatch.setattr(api_client.requests, "request", FakeApi())
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.secrets["API_URL"] = API_URL
+    at.secrets["SUPABASE_URL"] = "https://example.supabase.co"
+    at.secrets["SUPABASE_ANON_KEY"] = "sb_publishable_test"
+    at.run()
+    assert not at.exception
+    assert calls == [("https://example.supabase.co", "sb_publishable_test", 3)]
+    assert any("matches the `/audit` numbers exactly" in s.value for s in at.success)
+    direct = next(d.value for d in at.dataframe if "labeled test rows" in d.value.columns)
+    assert list(direct["labeled test rows"]) == [2429, 4898]
+    # the SQL values from /audit are still shown unchanged
+    values = [m.value for m in at.metric if m.label.startswith(("False-positive", "False-negative"))]
+    assert values == ["0.0268", "0.4151", "0.0985", "0.3804"]
+
+
+# -- Concepts --------------------------------------------------------------------
+def test_concepts_separates_training_and_inference(run_app):
+    at, _ = run_app()
+    latex = [l.value.strip("$\n") for l in at.latex]
+    assert r"q = \sigma(z)" in latex
+    assert r"p = \sigma\!\left(\frac{z}{T}\right)" in latex
+    assert any(r"\frac{1}{B}(q - y)" in l for l in latex)
+    assert not any("(p - y)" in l for l in latex)
+    xor = next(d.value for d in at.dataframe if "XOR target" in d.value.columns)
+    assert "np." not in xor.to_string()
