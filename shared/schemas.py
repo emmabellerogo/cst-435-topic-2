@@ -4,147 +4,137 @@ Keeping every wire-format type in one module is the contract between the three
 clouds. The Streamlit UI never imports model or SQL code -- it only imports (or
 mirrors) these schemas so that the payloads it sends match what FastAPI expects.
 
-This is the "Income-Insight" product (tabular binary classification). The *shape*
-of the contract is identical to the base template; only the fields change:
-regression metrics -> classification metrics, a scalar feature -> a record.
+The API serves one frozen model (the selected GELU run); there are no training
+or dataset endpoints. Inputs are exactly the 10 model features in
+shared.features -- never sex or race.
 """
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-
-# ---------------------------------------------------------------------------
-# Datasets
-# ---------------------------------------------------------------------------
-class DatasetCreate(BaseModel):
-    """Request body for POST /datasets."""
-
-    name: str = Field(..., min_length=1, max_length=100)
-    n_rows: int = Field(2000, ge=200, le=100_000)
-    noise: float = Field(1.0, ge=0.0, description="Scales the label-flip fraction.")
-    seed: int = Field(42, description="Seed for the synthetic generator.")
+from shared.features import NUMERIC_BOUNDS
 
 
-class Dataset(BaseModel):
-    """A dataset row as stored in Supabase."""
-
-    id: int
-    name: str
-    n_rows: int
-    n_features: int
-    positive_rate: float
-    created_at: datetime
-
-
-# ---------------------------------------------------------------------------
-# Training
-# ---------------------------------------------------------------------------
-class TrainRequest(BaseModel):
-    """Request body for POST /train."""
-
-    dataset_id: int
-    hidden_dim: int = Field(32, ge=1, le=1024, description="MLP hidden-layer width.")
-    lr: float = Field(0.01, gt=0.0, description="Adam learning rate.")
-    batch_size: int = Field(32, ge=1)
-    epochs: int = Field(100, ge=1, le=5000)
-    test_size: float = Field(0.2, gt=0.0, lt=1.0, description="Held-out fraction.")
-
-
-class ClassMetrics(BaseModel):
-    accuracy: float
-    precision: float
-    recall: float
-    f1: float
-    roc_auc: float
-
-
-class Run(BaseModel):
-    """A training-run row as stored in Supabase (metrics only; no model blob)."""
-
-    id: int
-    dataset_id: int
-    hidden_dim: int
-    lr: float
-    batch_size: int
-    epochs: int
-    accuracy: float
-    precision: float
-    recall: float
-    f1: float
-    roc_auc: float
-    created_at: datetime
-
-
-class TrainResponse(BaseModel):
-    run_id: int
-    metrics: ClassMetrics
+def _bounded(col: str, example: int):
+    lo, hi = NUMERIC_BOUNDS[col]
+    return Field(..., ge=lo, le=hi, examples=[example])
 
 
 # ---------------------------------------------------------------------------
 # Prediction
 # ---------------------------------------------------------------------------
-class PredictRequest(BaseModel):
-    """Request body for POST /predict -- one record keyed by FEATURE_COLS."""
+class PredictFeatures(BaseModel):
+    """Exactly the 10 raw model features. Any other key (e.g. sex, race) is a 422."""
 
-    run_id: int
-    features: Dict[str, object] = Field(
-        ..., description="One record, e.g. {'age': 39, 'education_num': 13, ...}."
-    )
+    model_config = ConfigDict(extra="forbid")
+
+    age: int = _bounded("age", 45)
+    education_num: int = _bounded("education_num", 13)
+    capital_gain: int = _bounded("capital_gain", 0)
+    capital_loss: int = _bounded("capital_loss", 0)
+    hours_per_week: int = _bounded("hours_per_week", 45)
+    workclass: str = Field(..., examples=["Private"])
+    marital_status: str = Field(..., examples=["Married-civ-spouse"])
+    occupation: str = Field(..., examples=["Exec-managerial"])
+    relationship: str = Field(..., examples=["Husband"])
+    native_country: str = Field(..., examples=["United-States"])
+
+
+class PredictRequest(BaseModel):
+    """Request body for POST /predict -- one row."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    features: PredictFeatures
+    run_id: Optional[int] = Field(
+        None, description="Optional. If given, must equal the served run's id.")
 
 
 class PredictResponse(BaseModel):
     run_id: int
+    run_name: str
     label: int = Field(..., description="0 = <=50K, 1 = >50K.")
     income: str = Field(..., description="Human-readable class label.")
-    proba: float = Field(..., description="P(income > 50K).")
+    proba: float = Field(..., description="Calibrated P(income > 50K).")
+    threshold: float
+    calibration_method: str
+    request_hash: str
+    logged: bool
 
 
-class PredictBatchRequest(BaseModel):
-    """Request body for POST /predict_batch."""
-
-    run_id: int
-    records: List[Dict[str, object]]
-
-
-class BatchItem(BaseModel):
+class BatchPrediction(BaseModel):
+    row: int = Field(..., description="1-based data row of the uploaded CSV.")
     label: int
     income: str
     proba: float
+    request_hash: str
 
 
 class PredictBatchResponse(BaseModel):
     run_id: int
-    predictions: List[BatchItem]
+    run_name: str
+    threshold: float
+    calibration_method: str
+    n_rows: int
+    n_predicted_positive: int
+    logged: int
+    ignored_columns: List[str]
+    predictions: List[BatchPrediction]
 
 
 # ---------------------------------------------------------------------------
-# Schema & audit
+# Schema
 # ---------------------------------------------------------------------------
+class FieldSpec(BaseModel):
+    name: str
+    kind: Literal["numeric", "categorical"]
+    type: Literal["integer", "string"]
+    required: bool = True
+    minimum: Optional[int] = None
+    maximum: Optional[int] = None
+    default: Optional[Any] = None
+    categories: Optional[List[str]] = None
+
+
 class SchemaResponse(BaseModel):
     """Feature contract, so the UI can build its input form dynamically."""
 
+    features: List[FieldSpec]
     numeric_features: List[str]
     categorical_features: List[str]
     categories: Dict[str, List[str]]
     target_name: str
     target_classes: List[str]
+    threshold: float
+    run_name: str
 
 
+# ---------------------------------------------------------------------------
+# Audit
+# ---------------------------------------------------------------------------
 class AuditGroup(BaseModel):
-    group: str
+    """One row of v_fairness_audit, passed through unchanged."""
+
+    group_value: str
     n: int
-    positive_rate: float = Field(..., description="Share predicted >50K in this group.")
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+    fpr: Optional[float] = Field(None, description="FP / (FP + TN), computed in SQL.")
+    fnr: Optional[float] = Field(None, description="FN / (FN + TP), computed in SQL.")
 
 
 class AuditResponse(BaseModel):
     run_id: int
-    by: str
-    total: int
-    overall_positive_rate: float
+    run_name: str
+    attribute: str
+    split: str
+    source: str
     groups: List[AuditGroup]
+    note: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -152,11 +142,35 @@ class AuditResponse(BaseModel):
 # ---------------------------------------------------------------------------
 class Health(BaseModel):
     status: str
-    model_loader: bool
+    model_loader: bool = Field(..., description="Model, preprocessor and calibrator loaded.")
     supabase: bool
+    run_loaded: bool
+    run_id: Optional[int] = None
+    detail: Optional[str] = None
+
+
+class ModelInfo(BaseModel):
+    architecture: str
+    hidden_sizes: List[int]
+    activation: str
+    dropout: float
+    best_epoch: int
+    n_inputs: int
+    n_encoded_features: int
+    calibration_method: str
+    temperature: float
+    threshold: float
+    config: Dict[str, Any]
+    test_accuracy: Optional[float] = None
+    test_roc_auc: Optional[float] = None
 
 
 class Version(BaseModel):
+    project: str
+    api_version: str
+    run_name: Optional[str]
+    run_id: Optional[int]
+    model: Optional[ModelInfo]
     git_sha: str
     torch_version: str
     sklearn_version: str

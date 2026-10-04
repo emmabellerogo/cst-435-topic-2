@@ -9,3 +9,5 @@ pandas==2.2.2
 scikit-learn==1.5.2
 supabase==2.7.4
 python-dotenv==1.0.1
+# Required by FastAPI for the CSV upload on POST /predict_batch.
+python-multipart==0.0.12

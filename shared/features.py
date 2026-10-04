@@ -9,7 +9,7 @@ design decision, recorded in :data:`EXCLUDED_COLS` with the reason for each.
 """
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 # Model inputs. Order matters: it is the column order the preprocessor sees.
 NUMERIC_COLS: List[str] = [
@@ -27,6 +27,17 @@ CATEGORICAL_COLS: List[str] = [
     "native_country",
 ]
 FEATURE_COLS: List[str] = NUMERIC_COLS + CATEGORICAL_COLS
+
+# Accepted range (inclusive) for each numeric input: the range observed in the
+# UCI Adult data, so the API never asks the model to extrapolate far beyond what
+# it was trained on. All five are whole numbers.
+NUMERIC_BOUNDS: Dict[str, Tuple[int, int]] = {
+    "age": (17, 90),
+    "education_num": (1, 16),
+    "capital_gain": (0, 99999),
+    "capital_loss": (0, 4356),
+    "hours_per_week": (1, 99),
+}
 
 # Columns stored in adult_income but deliberately NOT given to the model.
 EXCLUDED_COLS: Dict[str, str] = {

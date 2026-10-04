@@ -1,0 +1,19 @@
+{
+  "description": "Frozen reference input for the served GELU model. expected_proba is the calibrated P(>50K) snapshot written by `python -m tests.make_reference_prediction`; tests/test_api.py checks /predict stays within tolerance of it.",
+  "run_name": "gelu",
+  "features": {
+    "age": 45,
+    "education_num": 13,
+    "capital_gain": 0,
+    "capital_loss": 0,
+    "hours_per_week": 45,
+    "workclass": "Private",
+    "marital_status": "Married-civ-spouse",
+    "occupation": "Exec-managerial",
+    "relationship": "Husband",
+    "native_country": "United-States"
+  },
+  "expected_proba": 0.8153387738474163,
+  "expected_label": 1,
+  "tolerance": 0.001
+}
