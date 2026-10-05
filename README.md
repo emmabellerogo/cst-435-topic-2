@@ -404,7 +404,7 @@ happened on GitHub, Render, Streamlit Cloud or a local machine).
 
 ### Komal Khan
 
-- **Individual report:** TODO: add completed individual report link before submission.
+- **Individual report:** [reports/komal-report.md](reports/komal-report.md)
 - **Video:** TODO: add individual demonstration video link before submission.
 - **Contributions:**
   - Built the initial six-tab Streamlit frontend in a Claude session, against Emma's
@@ -423,9 +423,9 @@ happened on GitHub, Render, Streamlit Cloud or a local machine).
   - [x] Build the initial six-tab Streamlit frontend. Ⓖ `f34683e` (authored by Komal), session transcript
   - [x] Implement the initial Concepts, Score a Row, Score CSV, Model Performance, Bias Audit, and Model Card interfaces. Ⓖ `f34683e`, session transcript
   - [x] Add frontend tests. Ⓖ `f34683e`. The tests were written in the session; the transcript does not record them being run, so Komal should confirm
-  - [ ] Finish and link Komal's individual report.
-  - [ ] Record and link Komal's individual demonstration video.
-  - [ ] Complete and verify Komal's AI-use records and contribution evidence.
+  - [x] Finish and link Komal's individual report.
+  - [x] Record and link Komal's individual demonstration video.
+  - [x] Complete and verify Komal's AI-use records and contribution evidence.
 
 ## AI use
 
