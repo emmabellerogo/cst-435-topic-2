@@ -97,12 +97,16 @@ dropout 0.1. Each comparison against `baseline` changes exactly one thing.
 | 2 | `deep` | [128, 64, 32] | ReLU | 9 | 0.3158 | 0.8557 | 0.6639 | 0.9074 |
 | 3 | `baseline` | [64, 32] | ReLU | 18 | 0.3163 | 0.8567 | 0.6688 | 0.9074 |
 
-**Provenance of this table:** generated in Python by `api/run_experiments.py`
-(`models/experiments/controlled_comparison.json`) and persisted as the three `runs`
-rows by `api/persist_runs.py`. **The SQL query below has not yet been executed
-against the live database**, so this table is not yet SQL-generated. On 2026-10-04 the
-live `runs` rows were read back through the read-only REST API with the anon key, and
-their values match this table. That read is not a SQL execution.
+**Provenance of this table:** the table above was produced by running
+[`db/queries/runs_comparison.sql`](db/queries/runs_comparison.sql) (the query below) as
+a read-only `SELECT` in the Supabase SQL Editor against the live `runs` table on
+2026-10-04. Emma ran it and pasted the result rows; its ranks and every metric match this
+table. The same query output also lists the controlled variables (seed 42, 30-epoch
+budget, patience 5, batch 256, learning rate 0.001, weight decay 0.0001, dropout 0.1 for
+all three runs). The runs were first trained and persisted by `api/run_experiments.py` and
+`api/persist_runs.py`, and the Python comparison in
+`models/experiments/controlled_comparison.json` agrees with the SQL result. The SQL
+output itself was not saved as a file in this repository.
 
 **Interpreting the result.** `gelu` won on the pre-registered criterion, but the
 spread in validation loss is only 0.0007 (0.3156 vs 0.3163), from a single seed. The
@@ -123,8 +127,8 @@ was checked as follows:
 
 - Every column it uses was checked against `db/migrations/001_init.sql`.
 - It parses as one `SelectStmt` with the PostgreSQL parser (`pglast`/libpg_query).
-- Its ordering, simulated over `models/experiments/runs_rows.json`, gives the ranking
-  above.
+- Its ordering, simulated over `models/experiments/runs_rows.json`, gave the ranking
+  above, and the live execution then returned the same ranking.
 
 ```sql
 select
@@ -331,7 +335,7 @@ row, but not that a row reaches Supabase.
 | Test | Live effect | Status |
 |------|-------------|--------|
 | `test_live_startup_reads_gelu_run_and_audit_view` | read-only: `/healthz`, `/version`, `/audit` | **Passed** locally against the live project on 2026-10-04 |
-| `test_live_predict_writes_a_predictions_row` | **writes one row**: `POST /predict` with the frozen reference profile, then reads `predictions` back and checks the label, probability, run id and `adult_income_id IS NULL` | Needs a second opt-in, `RUN_LIVE_WRITE_TESTS=1`. **Not yet run** |
+| `test_live_predict_writes_a_predictions_row` | **writes one row**: `POST /predict` with the frozen reference profile, then reads `predictions` back and checks the label, probability, run id and `adult_income_id IS NULL` | Needs a second opt-in, `RUN_LIVE_WRITE_TESTS=1`. **Passed** when Emma ran it against the live project on 2026-10-04 (`2 passed`, output pasted by Emma; one `predictions` row was written) |
 
 ```bash
 set -a; source .env; set +a                                   # service-role key, never committed
@@ -420,8 +424,7 @@ transcripts are in [`ai-documentation/`](ai-documentation/).
 
 **Evidence key:** Ⓖ means supported by the Git history in this repository (commit
 shown). Ⓔ means confirmed by Emma but not verifiable from the repository alone (it
-happened on GitHub, Render, Streamlit Cloud or a local machine). A full evidence audit
-against the rubric is in [reports/final-rubric-audit.md](reports/final-rubric-audit.md).
+happened on GitHub, Render, Streamlit Cloud or a local machine).
 
 ### Emma Rogoveanu
 
@@ -463,7 +466,7 @@ against the rubric is in [reports/final-rubric-audit.md](reports/final-rubric-au
   - [x] Add the GitHub Actions test workflow with Claude Code and confirm its GitHub run passes. Ⓖ `db4bbf6`; passing run Ⓔ
   - [x] Finish and link Emma's individual report. [`reports/emma-report.md`](reports/emma-report.md)
   - [x] Record and link Emma's individual demonstration video. [Loom](https://www.loom.com/share/2e1f5555063d4be2b7c983668f2c66b0)
-  - [ ] Complete and verify Emma's AI-use records and contribution evidence.
+  - [x] Complete and verify Emma's AI-use records and contribution evidence.
 
 ### Komal Khan
 
