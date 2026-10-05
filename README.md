@@ -49,7 +49,7 @@ The Render free tier sleeps when idle, so the first request can take about a min
 
 | Tab | What it shows |
 |-----|---------------|
-| **Concepts** | Forward propagation and matrix shapes of the served 84 → 64 → 32 → 1 network. Training (q = σ(z), BCE) is kept separate from inference (p = σ(z/T)). Backpropagation with gradient shapes, a worked XOR example, an interactive XOR trainer, and ReLU vs GELU. |
+| **Concepts** | Forward propagation and matrix shapes of the served 84 → 64 → 32 → 1 network. Training (q = σ(z), BCE) is kept separate from inference (p = σ(z/T)). Backpropagation derived step by step with the chain rule and the shape of every error signal and gradient. XOR: why one linear boundary cannot work, a hand-built network, one full numerical backpropagation step (loss, δs, gradients, update) on a separate 2-2-1 ReLU teaching network, an interactive XOR trainer, and ReLU vs GELU. |
 | **Score a Row** | A form built from the API's `/schema`. Returns the class, the calibrated probability and the logging status. |
 | **Score CSV** | Upload up to 5 MB / 10,000 rows to `/predict_batch` and download the scored file. Any invalid value rejects the whole file. |
 | **Model Performance** | Test metrics, a train/validation/test comparison, learning curves, confusion matrix, per-class metrics, calibration, the three-configuration comparison and permutation importance. |
@@ -97,38 +97,62 @@ dropout 0.1. Each comparison against `baseline` changes exactly one thing.
 | 2 | `deep` | [128, 64, 32] | ReLU | 9 | 0.3158 | 0.8557 | 0.6639 | 0.9074 |
 | 3 | `baseline` | [64, 32] | ReLU | 18 | 0.3163 | 0.8567 | 0.6688 | 0.9074 |
 
-Source: `models/experiments/controlled_comparison.json`, also persisted as the three
-`runs` rows. `gelu` won on the pre-registered criterion, but the spread in validation
-loss is only 0.0007 from a single seed. The three configurations are effectively tied,
-and `baseline` has slightly higher validation accuracy. Only `gelu` was ever scored on
-test; the other runs' test columns are deliberately NULL.
+**Provenance of this table:** generated in Python by `api/run_experiments.py`
+(`models/experiments/controlled_comparison.json`) and persisted as the three `runs`
+rows by `api/persist_runs.py`. **The SQL query below has not yet been executed
+against the live database**, so this table is not yet SQL-generated. On 2026-10-04 the
+live `runs` rows were read back through the read-only REST API with the anon key, and
+their values match this table. That read is not a SQL execution.
+
+**Interpreting the result.** `gelu` won on the pre-registered criterion, but the
+spread in validation loss is only 0.0007 (0.3156 vs 0.3163), from a single seed. The
+three configurations are effectively tied. `baseline` has slightly higher validation
+accuracy and F1, and both ReLU runs have slightly higher ROC-AUC (0.9074 vs 0.9070). GELU's smooth, non-zero
+gradient for negative inputs is a plausible reason for its marginally lower loss, but
+one seed cannot separate that from run-to-run noise. The evidence supports "GELU is at
+least as good here, chosen by a rule fixed in advance", not "GELU is better". Only
+`gelu` was ever scored on test; the other runs' test columns are deliberately NULL.
 
 ### SQL query for the runs comparison
 
-The table above was produced by `api/run_experiments.py` from the saved runs and then
-persisted by `api/persist_runs.py`. This query reproduces it from the `runs` table.
-Every column it uses was checked against `db/migrations/001_init.sql`, and its
-ordering, simulated over `models/experiments/runs_rows.json`, gives the ranking above.
-It has not been executed against the live database from this repository.
+[`db/queries/runs_comparison.sql`](db/queries/runs_comparison.sql) generates the
+comparison table from the `runs` table. It is a single read-only `SELECT`, and it also
+returns the controlled variables (seed, epoch budget, patience, batch size, learning
+rate, weight decay) so the output itself shows the controls were matched. The query
+was checked as follows:
+
+- Every column it uses was checked against `db/migrations/001_init.sql`.
+- It parses as one `SelectStmt` with the PostgreSQL parser (`pglast`/libpg_query).
+- Its ordering, simulated over `models/experiments/runs_rows.json`, gives the ranking
+  above.
 
 ```sql
 select
+    row_number() over (
+        order by r.val_loss asc, r.val_roc_auc desc, r.name asc
+    )                                                                   as rank,
     r.id,
     r.name,
     r.hidden_sizes,
     r.activation,
     r.dropout,
+    r.seed,
+    r.epochs                                                            as epoch_budget,
+    (r.config ->> 'early_stopping_patience')::int                       as patience,
+    r.batch_size,
+    r.learning_rate,
+    r.weight_decay,
     r.best_epoch,
     round(r.val_loss::numeric, 4)                                       as val_loss,
     round(r.val_accuracy::numeric, 4)                                   as val_accuracy,
     round(((r.val_metrics ->> 'f1')::double precision)::numeric, 4)     as val_f1,
     round(r.val_roc_auc::numeric, 4)                                    as val_roc_auc,
-    round(r.test_accuracy::numeric, 4)                                  as test_accuracy,  -- NULL except the selected run
+    round(r.test_accuracy::numeric, 4)                                  as test_accuracy,
     round(r.test_roc_auc::numeric, 4)                                   as test_roc_auc,
     r.is_best
 from runs r
 where r.name in ('baseline', 'gelu', 'deep')
-order by r.val_loss asc, r.val_roc_auc desc, r.name asc;
+order by rank;
 ```
 
 ## Selected model: `gelu` (Supabase run 3)
@@ -148,6 +172,14 @@ order by r.val_loss asc, r.val_roc_auc desc, r.name asc;
 - **Confusion matrix** `[[TN, FP], [FN, TP]] = [[5180, 394], [676, 1077]]`. Per class,
   `<=50K` has precision 0.8846, recall 0.9293, F1 0.9064 (support 5,574), and `>50K`
   has precision 0.7322, recall 0.6144, F1 0.6681 (support 1,753).
+- **Which class is harder:** `>50K`. Only 1,753 of 7,327 test rows (23.9%) are `>50K`.
+  The model finds 1,077 of them (recall 61.4%), against 5,180 of the 5,574 `<=50K`
+  rows (recall 92.9%). Its 676 false negatives outnumber its 394 false positives, so
+  most mistakes fall on the minority class. The training loss weights every row
+  equally, and there are about three `<=50K` rows per `>50K` row. That is consistent
+  with the lower recall, but it does not prove the imbalance causes it, since some people
+  in both classes have near-identical recorded features. The 0.5 threshold was fixed,
+  not tuned. A lower threshold would trade more false positives for higher `>50K` recall.
 - **Train / validation / test** (same checkpoint, uncalibrated, threshold 0.5): the
   accuracies are 0.8614 / 0.8534 / 0.8540 and the BCE values 0.2983 / 0.3156 / 0.3190.
   That is a small generalization gap.
@@ -278,8 +310,7 @@ pytest -q
 
 The suite runs offline. Supabase is replaced by an in-memory fake, the API tests load
 the real `models/gelu/` artifacts, and the UI tests use Streamlit's `AppTest` with a
-fake API. `tests/test_supabase_roundtrip.py` is skipped unless Supabase credentials
-are set. The suite covers:
+fake API. The suite covers:
 
 - preprocessing (train-only fitting)
 - training and the experiment runner
@@ -287,13 +318,35 @@ are set. The suite covers:
 - run persistence
 - the API contract, validation and logging
 - the frozen reference prediction
-- the UI tabs
+- the UI tabs, including the numerical XOR backpropagation step, which is checked
+  against finite differences
+
+### Live Supabase tests (`tests/test_supabase_roundtrip.py`)
+
+Both tests skip unless `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set, so CI never
+touches the live project. Prediction-logging behavior is tested offline (mocked) in
+`tests/test_api.py`. Those tests show that the API *calls* the insert with the right
+row, but not that a row reaches Supabase.
+
+| Test | Live effect | Status |
+|------|-------------|--------|
+| `test_live_startup_reads_gelu_run_and_audit_view` | read-only: `/healthz`, `/version`, `/audit` | **Passed** locally against the live project on 2026-10-04 |
+| `test_live_predict_writes_a_predictions_row` | **writes one row**: `POST /predict` with the frozen reference profile, then reads `predictions` back and checks the label, probability, run id and `adult_income_id IS NULL` | Needs a second opt-in, `RUN_LIVE_WRITE_TESTS=1`. **Not yet run** |
+
+```bash
+set -a; source .env; set +a                                   # service-role key, never committed
+python -m pytest -rs tests/test_supabase_roundtrip.py         # read-only test only
+RUN_LIVE_WRITE_TESTS=1 python -m pytest -rs tests/test_supabase_roundtrip.py   # adds the one-row write test
+```
+
+The written row has `adult_income_id` NULL, so it can never enter the fairness audit.
+It is left in place.
 
 ### Continuous integration (GitHub Actions)
 
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs the same offline
-suite on every push and pull request to `main`, and can also be started by hand from
-the Actions tab.
+suite on every push to any branch and on every pull request to `main`. It can also be
+started by hand from the Actions tab.
 
 - **Environment:** Python 3.11 on Ubuntu.
 - **Install:** the CPU-only build of the `torch` version pinned in
@@ -303,8 +356,17 @@ the Actions tab.
   contacts the live Supabase project or the Render API, so the live round-trip test
   is skipped, and `-rs` prints the skip reason in the log.
 
-Emma confirmed that the workflow's first run on GitHub passed. The run URL and the
-test count reported on GitHub are not recorded here.
+Recorded runs (read with `gh run list` on 2026-10-04):
+- [run 37240404601](https://github.com/emmabellerogo/cst-435-topic-2/actions/runs/37240404601):
+  `db4bbf6`, success
+- [run 37241871026](https://github.com/emmabellerogo/cst-435-topic-2/actions/runs/37241871026):
+  `2891d46`, success
+- [run 37245649136](https://github.com/emmabellerogo/cst-435-topic-2/actions/runs/37245649136):
+  `8bee7fa`, success, `209 passed, 1 skipped`
+
+Run 37245630017 (`93e6c0a`) was cancelled by the concurrency rule when the next push
+arrived. It did not fail. Before the trigger change above, pushes to other branches
+(such as `komal-frontend`) were not tested.
 
 ## Deployment
 
@@ -334,12 +396,12 @@ test count reported on GitHub are not recorded here.
 api/        FastAPI service (main.py, serving.py, db.py) and the offline pipeline
             (preprocessing, model, train, run_experiments, calibration, evaluate_final, persist_runs)
 api/configs baseline.yaml · gelu.yaml · deep.yaml
-db/         migrations/001_init.sql · load.py · log_test_predictions.py
+db/         migrations/001_init.sql · queries/runs_comparison.sql · load.py · log_test_predictions.py
 shared/     features.py (feature contract) · schemas.py (API models)
 ui/         app.py + one module per tab, api_client.py, perf_data.py
 models/     committed artifacts for the three runs + experiments/
 tests/      pytest suite (offline)
-.github/workflows/tests.yml   CI: runs the offline suite on pushes and PRs to main
+.github/workflows/tests.yml   CI: runs the offline suite on every push and on PRs to main
 ai-documentation/   AI-use transcripts
 ```
 
@@ -358,7 +420,8 @@ transcripts are in [`ai-documentation/`](ai-documentation/).
 
 **Evidence key:** Ⓖ means supported by the Git history in this repository (commit
 shown). Ⓔ means confirmed by Emma but not verifiable from the repository alone (it
-happened on GitHub, Render, Streamlit Cloud or a local machine).
+happened on GitHub, Render, Streamlit Cloud or a local machine). A full evidence audit
+against the rubric is in [reports/final-rubric-audit.md](reports/final-rubric-audit.md).
 
 ### Emma Rogoveanu
 

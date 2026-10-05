@@ -221,12 +221,24 @@ def render() -> None:
             f"- **FN = {fn:,}**: >50K, wrongly predicted ≤50K\n"
             f"- **TP = {tp:,}**: >50K, predicted >50K"
         )
-        right.write(
-            f"**>50K is the harder class.** Of the {fn + tp:,} people who really earn >50K, the "
-            f"model misses {fn:,} (false negatives), which is why recall for >50K is lower than "
-            "precision. People earning >50K are the minority in the data, so the model has "
-            "fewer examples of them and leans toward predicting ≤50K."
-        )
+        pos, neg = fn + tp, tn + fp
+        if pos and neg:
+            right.write(
+                f"**>50K is the harder class.** Only {pos:,} of the {pos + neg:,} test rows "
+                f"({pos / (pos + neg):.1%}) really earn >50K. The model finds {tp:,} of them "
+                f"(recall {tp / pos:.1%}), but {tn:,} of the {neg:,} people earning ≤50K "
+                f"(recall {tn / neg:.1%}). It misses {fn:,} people who earn >50K, compared with "
+                f"{fp:,} false alarms the other way, so most of its mistakes land on the "
+                "minority class."
+            )
+            st.caption(
+                "This pattern is consistent with the class imbalance: the training data has about "
+                "three ≤50K rows for every >50K row, and the loss gives every row equal weight. "
+                "These results do not prove that imbalance is the cause. Some people in the two "
+                "classes have very similar recorded features, which no model could separate. "
+                "The 0.5 threshold was fixed in advance, not tuned. A lower threshold would raise "
+                ">50K recall, but it would also add false positives."
+            )
 
     # -- per-class -------------------------------------------------------------
     per_class = perf.get("per_class") or {}

@@ -6,6 +6,7 @@ import base64
 import io
 import json
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -90,6 +91,39 @@ def test_xor_training_reduces_loss():
     losses, probs = tab_concepts.train_xor("GELU", hidden=4, lr=0.5, epochs=3000, seed=0)
     assert losses[-1] < losses[0]
     assert probs.shape == (4, 1)
+
+
+def test_xor_backprop_step_values_shown_in_the_tab():
+    s = tab_concepts.xor_backprop_step(lr=0.5)
+    assert s["z"][:, 0].tolist() == [-0.5, 0.5, 0.5, -0.5]
+    assert float(s["loss"]) == pytest.approx(0.4741, abs=1e-4)
+    assert s["dW2"][:, 0] == pytest.approx([0.0472, 0.0472], abs=1e-4)
+    assert s["dW1"] == pytest.approx(np.array([[0.0, -0.5663], [0.0, -0.5663]]), abs=1e-4)
+    assert s["db1"] == pytest.approx([-0.1888, -0.5663], abs=1e-4)
+    assert s["W2_new"][:, 0] == pytest.approx([1.9764, -6.0236], abs=1e-4)
+    assert float(s["loss_after"]) == pytest.approx(0.4020, abs=1e-4)
+    for k, w in (("dW1", "W1"), ("db1", "b1"), ("dW2", "W2"), ("db2", "b2")):
+        assert s[k].shape == s[w].shape
+
+
+def test_xor_backprop_step_matches_finite_differences():
+    s = tab_concepts.xor_backprop_step()
+    X, y = tab_concepts.XOR_X, tab_concepts.XOR_Y
+
+    def loss(p):
+        q = tab_concepts.sigmoid(tab_concepts.relu(X @ p["W1"] + p["b1"]) @ p["W2"] + p["b2"])
+        return float(-np.mean(y * np.log(q) + (1 - y) * np.log(1 - q)))
+
+    params = {k: s[k].copy() for k in ("W1", "b1", "W2", "b2")}
+    eps = 1e-6
+    for name in params:
+        for idx in np.ndindex(params[name].shape):
+            params[name][idx] += eps
+            up = loss(params)
+            params[name][idx] -= 2 * eps
+            down = loss(params)
+            params[name][idx] += eps
+            assert (up - down) / (2 * eps) == pytest.approx(s["d" + name][idx], abs=1e-7)
 
 
 # -- evaluation results --------------------------------------------------------

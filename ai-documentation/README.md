@@ -10,7 +10,13 @@ times are America/Phoenix.
 - **Summary:** written afterwards. It is not a transcript and is labeled as such.
 - **Placeholder:** the conversation happened but has not been added yet.
 
-No course-specific AI-documentation requirements were found in this repository.
+The course's standing instructions (`../CST-435-Project-Instructions.md`, outside this repository) ask for:
+
+- full transcripts
+- `prompts_used.md`
+- `ai_assistance_log.md`, covering what AI helped with, how it was modified, and what was learned
+
+They also name the folder `ai_documentation/`. This repository uses `ai-documentation/`; the folder was not renamed, so existing links keep working.
 
 ## Emma Rogoveanu
 
@@ -20,8 +26,10 @@ No course-specific AI-documentation requirements were found in this repository.
 | [emma-claude-session-2026-10-03-pt2.md](emma-claude-session-2026-10-03-pt2.md) | Claude Code (VS Code) | Oct 3, 2026 (≈ 16:35–16:56) | Transcript (as displayed) | Presented as complete; see note 1 |
 | [emma-claude-session-2026-10-03-pt3.md](emma-claude-session-2026-10-03-pt3.md) | Claude Code (VS Code) | Oct 3, 2026 (≈ 16:56–17:07) | Transcript (as displayed) | Presented as complete; see note 1 |
 | [emma-claude-session-2026-10-03-pt4.md](emma-claude-session-2026-10-03-pt4.md) | Claude Code (VS Code) | Oct 3, 2026 (≈ 17:07–17:53) | Transcript (as displayed) | Presented as complete; see note 1 |
-| [emma-claude-session-2026-10-04-current.md](emma-claude-session-2026-10-04-current.md) | Claude Code (VS Code), Claude Opus 5.5 | Oct 4, 2026 (14:19 onward) | Transcript exported from the session log (prompts and replies verbatim; tool outputs and internal reasoning omitted), plus a labeled summary | **No.** In progress; the end of the session must be appended |
-| [emma-chatgpt-codex-assistance.md](emma-chatgpt-codex-assistance.md) | ChatGPT / Codex | — | Placeholder | **No.** Conversation(s) not yet added |
+| [emma-claude-session-2026-10-04-current.md](emma-claude-session-2026-10-04-current.md) | Claude Code (VS Code), Claude Opus 5.5 | Oct 4, 2026 (14:19 onward) | Transcript exported from the session logs (prompts and replies verbatim; tool outputs and internal reasoning omitted), plus a labeled summary | **No.** The rest of prompt 8, prompt 9 and most of prompt 10 (the final audit) were appended on 2026-10-04; the export stops partway through prompt 10 |
+| [emma-chatgpt-codex-assistance.md](emma-chatgpt-codex-assistance.md) | ChatGPT / Codex | — | Placeholder (recreated 2026-10-04; the earlier copy was not in the repository) | **No.** Conversation(s) not yet added |
+| [prompts_used.md](prompts_used.md) | Claude Code | Oct 3–4, 2026 | Verbatim prompt excerpts, checked against the session logs | Claude Code prompts only; ChatGPT/Codex prompts missing |
+| [ai_assistance_log.md](ai_assistance_log.md) | Claude Code, ChatGPT/Codex | Oct 3–4, 2026 | Summary (integration notes from Git and the transcripts) | **No.** The "What I learned" reflection must be written by Emma |
 
 **Notes:**
 

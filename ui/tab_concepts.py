@@ -83,6 +83,62 @@ def hand_built_xor(X: np.ndarray = XOR_X) -> Dict[str, np.ndarray]:
     return {"W1": W1, "b1": b1, "W2": W2, "b2": b2, "A1": A1, "H1": H1, "out": out}
 
 
+def xor_backprop_step(lr: float = 0.5) -> Dict[str, np.ndarray]:
+    """One full-batch gradient-descent step on XOR for a fixed 2-2-1 ReLU network.
+
+    A teaching example only (ReLU, plain sigmoid, no dropout, no calibration),
+    NOT the served GELU model. The starting weights already classify all four
+    points correctly but with low confidence, so the step has non-zero gradients,
+    and no pre-activation is exactly 0, so ReLU'(A1) is unambiguous.
+
+    Forward:  A1 = X W1 + b1, H1 = ReLU(A1), z = H1 W2 + b2, q = sigmoid(z)
+    Backward: d2 = (q - y)/n, dW2 = H1^T d2, db2 = sum(d2), dH1 = d2 W2^T,
+              d1 = dH1 * ReLU'(A1), dW1 = X^T d1, db1 = sum(d1)
+    """
+    X, y = XOR_X, XOR_Y
+    n = len(X)
+    W1 = np.array([[1.0, 1.0], [1.0, 1.0]])
+    b1 = np.array([-0.5, -1.5])
+    W2 = np.array([[2.0], [-6.0]])
+    b2 = np.array([-0.5])
+
+    def forward(W1, b1, W2, b2):
+        A1 = X @ W1 + b1
+        H1 = relu(A1)
+        z = H1 @ W2 + b2
+        q = sigmoid(z)
+        loss = float(-np.mean(y * np.log(q) + (1 - y) * np.log(1 - q)))
+        return A1, H1, z, q, loss
+
+    A1, H1, z, q, loss = forward(W1, b1, W2, b2)
+    d2 = (q - y) / n
+    dW2 = H1.T @ d2
+    db2 = d2.sum(axis=0)
+    dH1 = d2 @ W2.T
+    d1 = dH1 * relu_grad(A1)
+    dW1 = X.T @ d1
+    db1 = d1.sum(axis=0)
+    new = {"W1": W1 - lr * dW1, "b1": b1 - lr * db1, "W2": W2 - lr * dW2, "b2": b2 - lr * db2}
+    *_, q_after, loss_after = forward(new["W1"], new["b1"], new["W2"], new["b2"])
+    return {
+        "W1": W1, "b1": b1, "W2": W2, "b2": b2, "lr": np.array(lr),
+        "A1": A1, "H1": H1, "z": z, "q": q, "loss": np.array(loss),
+        "d2": d2, "dW2": dW2, "db2": db2, "dH1": dH1, "d1": d1, "dW1": dW1, "db1": db1,
+        "W1_new": new["W1"], "b1_new": new["b1"], "W2_new": new["W2"], "b2_new": new["b2"],
+        "q_after": q_after, "loss_after": np.array(loss_after),
+    }
+
+
+def _bmatrix(a, digits: int = 4) -> str:
+    """A NumPy array as a LaTeX bmatrix (vectors are shown as one row)."""
+    a = np.atleast_2d(np.asarray(a, dtype=float))
+    def fmt(v):
+        v = round(float(v), digits)
+        return f"{0.0 if v == 0 else v:g}"
+    body = r" \\ ".join(" & ".join(fmt(v) for v in row) for row in a)
+    return r"\begin{bmatrix}" + body + r"\end{bmatrix}"
+
+
 def xor_table(hb: Dict[str, np.ndarray]) -> pd.DataFrame:
     """The hand-built network's values, one plain Python int per cell (no NumPy reprs)."""
     def col(a):
@@ -199,6 +255,50 @@ def _model_shape(url: Optional[str]) -> Tuple[int, List[int], str, Optional[floa
 # ---------------------------------------------------------------------------
 # render
 # ---------------------------------------------------------------------------
+def render_xor_backprop_step() -> None:
+    s = xor_backprop_step()
+    m = _bmatrix
+    st.markdown("**One backpropagation step by hand (numerical XOR example)**")
+    st.caption(
+        "A separate 2-2-1 teaching network: ReLU hidden layer, plain sigmoid q = σ(z), no "
+        "dropout and no temperature. It is not the served GELU model. The starting weights "
+        "already put every point on the right side of 0.5, but only weakly, so the gradients "
+        "are not zero. All four XOR rows form one batch (B = 4); values are rounded to 4 decimals."
+    )
+    st.latex(r"W_1 = " + m(s["W1"]) + r",\; b_1 = " + m(s["b1"]) + r",\; W_2 = " + m(s["W2"])
+             + r",\; b_2 = " + m(s["b2"]) + r",\; \eta = " + f"{float(s['lr']):g}")
+    st.markdown("*Forward pass* (X is 4 × 2, so A₁ and H₁ are 4 × 2 and z, q are 4 × 1):")
+    st.latex(r"A_1 = XW_1 + b_1 = " + m(s["A1"]) + r",\quad H_1 = \mathrm{ReLU}(A_1) = "
+             + m(s["H1"]))
+    st.latex(r"z = H_1W_2 + b_2 = " + m(s["z"]) + r",\quad q = \sigma(z) = " + m(s["q"])
+             + r",\quad y = " + m(XOR_Y))
+    st.latex(r"\mathcal{L} = -\tfrac{1}{4}\textstyle\sum_i\big[y_i\log q_i + (1-y_i)\log(1-q_i)\big]"
+             r" = " + f"{float(s['loss']):.4f}")
+    st.markdown("*Backward pass* (each gradient has the shape of what it differentiates):")
+    st.latex(r"\delta_2 = \tfrac{1}{4}(q - y) = " + m(s["d2"]) + r",\quad "
+             r"\tfrac{\partial\mathcal{L}}{\partial W_2} = H_1^{\top}\delta_2 = " + m(s["dW2"])
+             + r",\quad \tfrac{\partial\mathcal{L}}{\partial b_2} = " + m(s["db2"]))
+    st.latex(r"\tfrac{\partial\mathcal{L}}{\partial H_1} = \delta_2W_2^{\top} = " + m(s["dH1"])
+             + r",\quad \mathrm{ReLU}'(A_1) = " + m(relu_grad(s["A1"])))
+    st.latex(r"\delta_1 = \tfrac{\partial\mathcal{L}}{\partial H_1}\odot\mathrm{ReLU}'(A_1) = "
+             + m(s["d1"]))
+    st.latex(r"\tfrac{\partial\mathcal{L}}{\partial W_1} = X^{\top}\delta_1 = " + m(s["dW1"])
+             + r",\quad \tfrac{\partial\mathcal{L}}{\partial b_1} = \mathbf{1}^{\top}\delta_1 = "
+             + m(s["db1"]))
+    st.markdown("*Update* (plain gradient descent, W ← W − η ∂L/∂W):")
+    st.latex(r"W_2 \leftarrow " + m(s["W2"]) + r" - 0.5" + m(s["dW2"]) + r" = " + m(s["W2_new"])
+             + r",\quad b_1 \leftarrow " + m(s["b1_new"]) + r",\quad W_1 \leftarrow "
+             + m(s["W1_new"]))
+    st.write(
+        f"After this one step the loss falls from {float(s['loss']):.4f} to "
+        f"{float(s['loss_after']):.4f}. Notice the effect of ReLU: the first row (0, 0) has "
+        "A₁ < 0 in both units, so ReLU′ = 0 there and that row sends no gradient to W₁. The "
+        "first hidden unit's incoming weights get a zero gradient overall, because its "
+        "contributions from the other three rows cancel. The served model is trained the same "
+        "way, but with GELU, dropout, mini-batches and AdamW instead of this plain step."
+    )
+
+
 def render(url: Optional[str]) -> None:
     n_in, hidden, act_name, temperature = _model_shape(url)
     h1, h2 = (hidden + [None, None])[:2]
@@ -271,6 +371,44 @@ def render(url: Optional[str]) -> None:
              r"\quad\Rightarrow\quad \frac{\partial \mathcal{L}}{\partial W_2} = H_1^{\top}\delta_2")
     st.latex(r"\delta_1 = \frac{\partial \mathcal{L}}{\partial A_1} = (\delta_2 W_2^{\top}) \odot \phi'(A_1)"
              r"\quad\Rightarrow\quad \frac{\partial \mathcal{L}}{\partial W_1} = X^{\top}\delta_1")
+    with st.expander("The chain-rule steps behind these three lines", expanded=True):
+        st.write(
+            f"Shapes for the served model, with a batch of B rows: X is B × {n_in}; "
+            f"A₁ and H₁ are B × {h1}; A₂ and H₂ are B × {h2}; z, q, y and δ₃ are B × 1. "
+            f"W₁ is {n_in} × {h1}, W₂ is {h1} × {h2}, W₃ is {h2} × 1, and the biases have "
+            f"{h1}, {h2} and 1 entries. Each step below multiplies one local derivative into "
+            "the error coming from the layer above."
+        )
+        st.markdown("**Step 1: loss → logit** (per row i; the 1/B comes from the mean)")
+        st.latex(r"\frac{\partial \mathcal{L}}{\partial q_i} = -\frac{1}{B}\left(\frac{y_i}{q_i}"
+                 r" - \frac{1-y_i}{1-q_i}\right) = \frac{1}{B}\,\frac{q_i - y_i}{q_i(1-q_i)},"
+                 r"\qquad \frac{\partial q_i}{\partial z_i} = \sigma'(z_i) = q_i(1-q_i)")
+        st.latex(r"\Rightarrow\; \delta_{3,i} = \frac{\partial \mathcal{L}}{\partial q_i}\cdot"
+                 r"\frac{\partial q_i}{\partial z_i} = \frac{q_i - y_i}{B}")
+        st.markdown("**Step 2: logit → output weights and bias.** Since "
+                    "z = H₂W₃ + 1b₃ (1 is a column of B ones), each entry is "
+                    "zᵢ = Σⱼ H₂[i, j] W₃[j] + b₃, so")
+        st.latex(r"\frac{\partial \mathcal{L}}{\partial W_3[j]} = \sum_{i=1}^{B} H_2[i,j]\,\delta_{3,i}"
+                 r"\;\Rightarrow\; \frac{\partial \mathcal{L}}{\partial W_3} = "
+                 r"\underbrace{H_2^{\top}}_{" + f"{h2}" + r"\times B}\underbrace{\delta_3}_{B\times 1},"
+                 r"\qquad \frac{\partial \mathcal{L}}{\partial b_3} = \mathbf{1}^{\top}\delta_3")
+        st.markdown("**Step 3: logit → previous layer's output, then through the activation.** "
+                    "z depends on H₂[i, j] through W₃[j], and H₂ = φ(A₂) is applied entry by "
+                    "entry, so its Jacobian is diagonal and becomes an element-wise product:")
+        st.latex(r"\frac{\partial \mathcal{L}}{\partial H_2} = \underbrace{\delta_3}_{B\times 1}"
+                 r"\underbrace{W_3^{\top}}_{1\times " + f"{h2}" + r"},\qquad "
+                 r"\delta_2 = \frac{\partial \mathcal{L}}{\partial H_2}\odot\phi'(A_2)\quad(B\times "
+                 + f"{h2}" + r")")
+        st.markdown("**Step 4: repeat.** Steps 2 and 3 are the same for every layer, which is "
+                    "why backpropagation is a loop:")
+        st.latex(r"\frac{\partial \mathcal{L}}{\partial W_2} = H_1^{\top}\delta_2\;(" + f"{h1}"
+                 + r"\times" + f"{h2}" + r"),\quad \delta_1 = (\delta_2W_2^{\top})\odot\phi'(A_1)"
+                 r"\;(B\times" + f"{h1}" + r"),\quad \frac{\partial \mathcal{L}}{\partial W_1} = "
+                 r"X^{\top}\delta_1\;(" + f"{n_in}" + r"\times" + f"{h1}" + r")")
+        st.caption(f"For this model φ is {act_name.upper()}"
+                   + (", so φ′(a) = Φ(a) + a·N(a), where Φ and N are the standard normal CDF and "
+                      "density)." if act_name.lower() == "gelu" else "."))
+
     st.markdown("**Gradient shapes for the model being served** (computed output first)")
     st.dataframe(gradient_shapes(n_in, hidden), hide_index=True, use_container_width=True)
     st.write(
@@ -298,6 +436,19 @@ def render(url: Optional[str]) -> None:
         "(logistic regression) cannot learn it. One hidden layer with a non-linear activation "
         "can: it bends the input space so that a straight line works afterwards."
     )
+    st.markdown(
+        "**Why one line cannot work.** A single linear boundary predicts 1 when "
+        "w₁x₁ + w₂x₂ + b > 0. XOR would need b < 0 for (0, 0), w₁ + b > 0 for (1, 0), "
+        "w₂ + b > 0 for (0, 1) and w₁ + w₂ + b < 0 for (1, 1). Adding the two middle "
+        "inequalities gives w₁ + w₂ + 2b > 0, so w₁ + w₂ + b > −b > 0, which contradicts the "
+        "last one. No choice of weights works.\n\n"
+        "**Why stacking matrices alone does not help.** Without an activation, two layers "
+        "collapse into one: (XW₁ + b₁)W₂ + b₂ = X(W₁W₂) + (b₁W₂ + b₂), which is still one "
+        "linear boundary. Each matrix multiplication can only rotate, stretch and project the "
+        "inputs. The non-linear φ between them is what lets the next matrix multiplication "
+        "draw a boundary that is curved in the original inputs. More hidden units and layers "
+        "give more such pieces, and that is where the network's expressive capacity comes from."
+    )
     hb = hand_built_xor()
     st.markdown("**A hand-built network that solves XOR**")
     st.latex(r"h_1 = \mathrm{ReLU}(x_1 + x_2), \quad h_2 = \mathrm{ReLU}(x_1 + x_2 - 1), "
@@ -310,6 +461,8 @@ def render(url: Optional[str]) -> None:
         "The second hidden unit only switches on for (1, 1), and subtracting it twice "
         "cancels the first unit there."
     )
+
+    render_xor_backprop_step()
 
     st.markdown("**Now let backpropagation find the weights itself**")
     c1, c2, c3, c4 = st.columns(4)

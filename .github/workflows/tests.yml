@@ -1,4 +1,4 @@
-# Runs the offline pytest suite on every push and pull request to main.
+# Runs the offline pytest suite on every push (any branch) and on pull requests to main.
 #
 # No secrets are configured: Supabase is replaced by the in-memory FakeDB in
 # tests/conftest.py, the API tests load the committed models/gelu/ artifacts,
@@ -10,7 +10,6 @@ name: tests
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:

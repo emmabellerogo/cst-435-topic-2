@@ -945,3 +945,601 @@ I'll start by inspecting the existing AI documentation and looking for Claude Co
 **Bash**: Correct pt3 and pt4 titles, verify bodies unchanged
 
 **Bash**: Write and run session-log exporter
+
+
+---
+
+## Appended 2026-10-04 (exported from the session logs, same format and omissions as above)
+
+_Continuation of prompt 8 from session log `38f1897e-cfe0-4c9b-95cb-05cfa4cb1d3b`, starting right after the last tool line above. Prompt 9 was interrupted by Emma, who then cleared the conversation and re-sent the same request as prompt 10 in a new session (log `59d43f0d-7a54-4c9f-bc3b-8fa48922eaee`). This export was made while prompt 10 was still running, so it stops before the end of prompt 10. Nothing above this heading was changed._
+
+**Bash**: Check export ending and absence of system notes
+
+**Bash**: Search for AI documentation requirements and ChatGPT records
+
+**Bash**: Assemble current session documentation file
+
+Now the ChatGPT/Codex placeholder and the index:
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/emma-chatgpt-codex-assistance.md
+
+Before writing the index, I'll check that each October 3 transcript actually contains its session's last prompt, so the "complete" column rests on evidence:
+
+**Bash**: Check each Oct 3 transcript contains its prompts
+
+**Bash**: Loosely match transcripts against session logs
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/README.md
+
+Final checks: what changed in the folder, that Komal's record is untouched, that the new files contain no credential patterns, and that the index links resolve.
+
+**Bash**: Verify changes, redaction and links
+
+Your AI-use documentation is organized, and this conversation is exported verbatim into a new file up to partway through this request. Nothing was committed or pushed, and Komal's record, the application code, secrets and model files are unchanged.
+
+**Files created or corrected in `ai-documentation/`:**
+- **`emma-claude-session-2026-10-03-pt3.md`:** title changed from "Part 2" to "Part 3". Only line 1 changed; the rest is byte-identical.
+- **`emma-claude-session-2026-10-03-pt4.md`:** title changed to "Part 4", line 1 only.
+- **`emma-claude-session-2026-10-04-current.md` (new):**
+  - **Header:** you as participant, October 4, 2026 (America/Phoenix), Claude Code with Claude Opus 5.5 (the model is named in the session log), and status "In progress; append the remaining conversation before final submission."
+  - **Summary:** labeled as a summary, not transcript. It covers what was done, files affected, the checks actually run, what was not verified, and remaining work.
+  - **Transcript:** exported directly from Claude Code's own session log, not from memory. Your 8 prompts and my replies are verbatim, and each tool call is one line. Tool outputs, my internal reasoning and system notes are left out, and the file says so.
+  - **Redaction:** no credentials were found. One email address (Komal's, which I had quoted from the Git log) is replaced with `[REDACTED EMAIL]`.
+  - **Paste section:** an empty section at the end for the rest of this conversation.
+- **`emma-chatgpt-codex-assistance.md` (new):** a placeholder marked not complete. It notes that ChatGPT/Codex helped with project review, prompts, the report draft and the video script, and that none of it is in any Claude transcript.
+- **`README.md` (new index):** lists every record with its tool, date and time, type and completeness.
+
+**What the session logs show:**
+- **October 4:** all of today's work was one Claude Code session, so there are no separate October 4 transcripts missing.
+- **October 3:** the four session logs match the four existing files one-to-one.
+- **Completeness of the October 3 files:** I couldn't confirm it automatically. They were copied as displayed, so their formatting doesn't match the raw logs. The index says they rest on your own export rather than marking them verified.
+- **No course requirements:** the repo contains no course requirements for AI documentation.
+
+**Still missing:**
+1. **The end of this conversation.** Append it to `emma-claude-session-2026-10-04-current.md` under "Remaining conversation (paste below)", starting with my reply to this request, then update the status line.
+2. **The ChatGPT/Codex conversation(s)** (project review, prompts, report draft, video script). Add them to `emma-chatgpt-codex-assistance.md`.
+3. **Optional:** check `emma-claude-session-2026-10-03.md` against your original display. My automated check couldn't find its final reply, though that may only be a formatting difference.
+
+Komal's record is listed in the index as provided by her, for her to confirm.
+
+
+---
+
+### Emma (prompt 9, 16:58 America/Phoenix)
+
+_[IDE context: Emma had `ai-documentation/emma-claude-session-2026-10-04-current.md` open in the editor]_
+
+Perform a final evidence-based audit and fix of our CST-435 Topic 2 Income Insight submission against the professor’s modified Topic 2 rubric and assignment instructions attached to this conversation. Prioritize the professor’s supplied rubric over the LMS embedded rubric.
+
+I am on a submission deadline. Implement necessary local fixes now, prioritize genuine grading gaps, and avoid unnecessary refactoring. Do not commit, push, deploy, retrain, replace model artifacts, change live database permissions, or fabricate evidence. Preserve secrets and original AI transcripts.
+
+Read applicable repository instructions and the attached documents. Create reports/final-rubric-audit.md with every criterion, its weight, Target requirements, concrete evidence, verification performed, and remaining gaps. Distinguish verified, user-confirmed, unverified, and missing evidence. Do not promise a grade.
+
+Relevant previous feedback from Topic 1:
+- Concepts remained template content, with no original chain-rule worked example.
+- Hyperparameter evidence was insufficiently varied or persisted.
+- Evaluation metrics were reported without enough interpretation.
+- CI was absent.
+- Model-card owners were placeholders.
+
+Apply those lessons to Topic 2. Do not add irrelevant Topic 1 regression requirements such as MSE/MAE/R² or diverged-run history.
+
+Audit and fix these requirements:
+
+1. Forward/backward propagation — 12%
+Verify a rigorous matrix-form derivation with explicit shapes for inputs, every weight, bias, activation, error signal, and weight/bias gradient. Show actual chain-rule steps, not just final formulas.
+Verify a complete numerical XOR example and explain why nonlinear hidden layers can represent XOR while one linear decision boundary cannot.
+If the existing numerical XOR example only shows forward propagation, add a compact, mathematically correct numerical backpropagation example showing a loss, intermediate derivatives, and one weight update. Clearly distinguish it from the deployed GELU model.
+Keep training q = sigmoid(z) separate from calibrated inference p = sigmoid(z/T). Check notation and numerical calculations.
+
+2. Training, calibration, confusion-matrix analysis — 12%
+Verify reproducible splits, train-only preprocessing, configurable MLP with at least two hidden layers, best checkpoint selection, serialized preprocessing, validation-only calibration, and test isolation.
+Verify loss/accuracy curves, train/validation/test results, confusion matrix, per-class precision/recall/F1, calibration diagram, and persisted headline metrics.
+Check the explanation of why >50K is harder using actual counts, class imbalance, and recall. Do not claim causal explanations beyond the evidence.
+
+3. Controlled configurations and SQL comparison — 12%
+Verify at least three persisted configurations with matched seeds and budgets and a defensible activation choice.
+IMPORTANT: README currently says the comparison originated in Python and its SQL query was not executed live. The Target rubric requires the comparison table to be generated by SQL against runs.
+Prepare an exact read-only SELECT query checked against the real schema. If existing authorized read access allows it, execute against the live database and regenerate the README table from the actual SQL results, recording provenance.
+If direct SQL execution is unavailable, provide the exact query and simple instructions for me to run it in Supabase SQL Editor and paste the results. Do not describe a REST table read or simulated SQL ordering as executed SQL.
+Do not retrain to manufacture larger differences. Explain GELU’s small validation-loss advantage honestly.
+
+4. SQL fairness audit — 12%
+Verify /audit’s SQL joins labeled predictions to adult_income and correctly computes FPR/FNR by protected attribute.
+Verify the Streamlit direct anon-key aggregate read and substantive mitigation discussion.
+Check group counts and denominators. Unlabeled user predictions must not enter FPR/FNR.
+
+5. Three clouds and six tabs — 10%
+Verify separation between thin Streamlit UI, FastAPI model serving, and Supabase persistence; schema-generated form; CSV upload/download; startup and batch-request Supabase reads; required endpoints; architecture diagram.
+Use local browser checks if available. Do not claim newly edited code is deployed until it is pushed and checked.
+Emma already confirmed the public updated performance sections, direct audit matching /audit, scored template download, and incognito public access. Record these as user-confirmed, not independently verified.
+Do not display secrets or require opening private dashboards for evidence.
+
+6. Code execution — 10%
+Run relevant tests. Verify schema validation, batch row-count preservation, frozen reference probability within ±0.001, startup artifact loading, and meaningful Supabase-failure coverage.
+GitHub Actions passed according to Emma; inspect its configuration and link the actual run if available. Check whether its triggers meet “CI is green on every push,” rather than assuming main-only coverage meets that wording.
+IMPORTANT: distinguish mocked prediction-write tests from the assignment’s required live Supabase test that confirms /predict writes a predictions row. The live test currently skips without credentials.
+Inspect what that test actually exercises. Prepare or fix it if it does not verify /predict persistence. Do not run a live write without explaining the exact test request and obtaining my authorization. Existing public UI logging messages are useful evidence but do not substitute for the required pytest test.
+Never weaken tests, manufacture green results, or expose credentials.
+
+7. Professional documentation — 8%
+Verify pitch, URLs, Supabase reference, architecture, accurate owners, intended use, limitations, fairness, feature importance, and persisted/not-persisted statement.
+Check individual report/video links and access status. Emma’s video:
+https://www.loom.com/share/2e1f5555063d4be2b7c983668f2c66b0
+Emma’s report: reports/emma-report.md.
+Komal’s full name: Komal Khan.
+Do not create or attribute Komal’s report/video as completed unless supplied.
+
+8. Participation — 16%
+Verify per-member contribution bullets, task lists, meaningful Git history, and remaining required evidence. Do not pad commits, change authorship, or infer contribution from branch names.
+Emma’s final UI fixes were accidentally pushed to komal-frontend; they remain Emma’s work.
+Identify any unmet course expectation for eight meaningful commits without inventing evidence.
+
+9. Ethics — 8%
+Check Emma’s report is 600–1,000 words and ties actual FPR/FNR gaps to a specific deployment context.
+Clearly state that Female records have the worse false-negative rate and Male records the worse false-positive rate; avoid claiming one group is universally worse on every metric.
+Name at least two concrete mitigations and explain responsible evaluation.
+Strengthen the Deuteronomy 1:17 reflection to state explicitly what is owed to the disadvantaged group before deployment: transparent disclosure, investigation of disparities, validation of mitigation, and safeguards against harmful automated decisions. Connect this to an illustrative employment or workforce-services context without endorsing actual high-stakes use.
+Preserve the educational-only limitation and distinguish proposed mitigations from implemented ones.
+Do not invent personal experiences or claim Emma performed work not supported by evidence.
+
+10. AI records and submission
+Check complete transcripts for all tools, prompt examples, integration/adaptation notes, and learning/reflection requirements.
+Preserve original transcripts. Summaries and placeholders must not be labeled complete transcripts.
+Identify missing Claude and ChatGPT/Codex sessions, including report and video-script assistance and this audit.
+Append this session to the appropriate ongoing record where reliable history is available.
+Check the attached instructions for submission format. If Word/PDF documentation is required in addition to the Markdown report, prepare the required export if tooling permits and verify it; flag uncertainty between general announcements and the specific assignment.
+Verify both individual reports are 600–1,000 words and videos 3–5 minutes where the files or metadata are available. Do not claim duration or accessibility without checking.
+
+Finish with:
+- Necessary fixes implemented and their verification.
+- A short, prioritized list of remaining grade risks.
+- Exact steps I must perform, including any SQL query, authorized live test, missing transcript, partner deliverable, commit/push, or deployment check.
+- A submission checklist with no falsely completed items.
+
+Focus on evidence and real requirements, not cosmetic improvements or a blanket “everything meets Target” claim.
+
+
+### Claude
+
+The rubric and instructions you mention don't appear as attachments in my context, so I'll check whether they were added to the repository before
+
+
+_[Emma interrupted this request here.]_
+
+
+---
+
+_[New Claude Code session: log `59d43f0d-7a54-4c9f-bc3b-8fa48922eaee`, model Claude Opus 5.5. Emma ran `/clear` before this prompt.]_
+
+---
+
+### Emma (prompt 10, 16:58 America/Phoenix)
+
+_[IDE context: Emma had `ai-documentation/emma-claude-session-2026-10-04-current.md` open in the editor]_
+
+Perform a final evidence-based audit and fix of our CST-435 Topic 2 Income Insight submission against the professor’s modified Topic 2 rubric and assignment instructions attached to this conversation. Prioritize the professor’s supplied rubric over the LMS embedded rubric.
+
+I am on a submission deadline. Implement necessary local fixes now, prioritize genuine grading gaps, and avoid unnecessary refactoring. Do not commit, push, deploy, retrain, replace model artifacts, change live database permissions, or fabricate evidence. Preserve secrets and original AI transcripts.
+
+Read applicable repository instructions and the attached documents. Create reports/final-rubric-audit.md with every criterion, its weight, Target requirements, concrete evidence, verification performed, and remaining gaps. Distinguish verified, user-confirmed, unverified, and missing evidence. Do not promise a grade.
+
+Relevant previous feedback from Topic 1:
+- Concepts remained template content, with no original chain-rule worked example.
+- Hyperparameter evidence was insufficiently varied or persisted.
+- Evaluation metrics were reported without enough interpretation.
+- CI was absent.
+- Model-card owners were placeholders.
+
+Apply those lessons to Topic 2. Do not add irrelevant Topic 1 regression requirements such as MSE/MAE/R² or diverged-run history.
+
+Audit and fix these requirements:
+
+1. Forward/backward propagation — 12%
+Verify a rigorous matrix-form derivation with explicit shapes for inputs, every weight, bias, activation, error signal, and weight/bias gradient. Show actual chain-rule steps, not just final formulas.
+Verify a complete numerical XOR example and explain why nonlinear hidden layers can represent XOR while one linear decision boundary cannot.
+If the existing numerical XOR example only shows forward propagation, add a compact, mathematically correct numerical backpropagation example showing a loss, intermediate derivatives, and one weight update. Clearly distinguish it from the deployed GELU model.
+Keep training q = sigmoid(z) separate from calibrated inference p = sigmoid(z/T). Check notation and numerical calculations.
+
+2. Training, calibration, confusion-matrix analysis — 12%
+Verify reproducible splits, train-only preprocessing, configurable MLP with at least two hidden layers, best checkpoint selection, serialized preprocessing, validation-only calibration, and test isolation.
+Verify loss/accuracy curves, train/validation/test results, confusion matrix, per-class precision/recall/F1, calibration diagram, and persisted headline metrics.
+Check the explanation of why >50K is harder using actual counts, class imbalance, and recall. Do not claim causal explanations beyond the evidence.
+
+3. Controlled configurations and SQL comparison — 12%
+Verify at least three persisted configurations with matched seeds and budgets and a defensible activation choice.
+IMPORTANT: README currently says the comparison originated in Python and its SQL query was not executed live. The Target rubric requires the comparison table to be generated by SQL against runs.
+Prepare an exact read-only SELECT query checked against the real schema. If existing authorized read access allows it, execute against the live database and regenerate the README table from the actual SQL results, recording provenance.
+If direct SQL execution is unavailable, provide the exact query and simple instructions for me to run it in Supabase SQL Editor and paste the results. Do not describe a REST table read or simulated SQL ordering as executed SQL.
+Do not retrain to manufacture larger differences. Explain GELU’s small validation-loss advantage honestly.
+
+4. SQL fairness audit — 12%
+Verify /audit’s SQL joins labeled predictions to adult_income and correctly computes FPR/FNR by protected attribute.
+Verify the Streamlit direct anon-key aggregate read and substantive mitigation discussion.
+Check group counts and denominators. Unlabeled user predictions must not enter FPR/FNR.
+
+5. Three clouds and six tabs — 10%
+Verify separation between thin Streamlit UI, FastAPI model serving, and Supabase persistence; schema-generated form; CSV upload/download; startup and batch-request Supabase reads; required endpoints; architecture diagram.
+Use local browser checks if available. Do not claim newly edited code is deployed until it is pushed and checked.
+Emma already confirmed the public updated performance sections, direct audit matching /audit, scored template download, and incognito public access. Record these as user-confirmed, not independently verified.
+Do not display secrets or require opening private dashboards for evidence.
+
+6. Code execution — 10%
+Run relevant tests. Verify schema validation, batch row-count preservation, frozen reference probability within ±0.001, startup artifact loading, and meaningful Supabase-failure coverage.
+GitHub Actions passed according to Emma; inspect its configuration and link the actual run if available. Check whether its triggers meet “CI is green on every push,” rather than assuming main-only coverage meets that wording.
+IMPORTANT: distinguish mocked prediction-write tests from the assignment’s required live Supabase test that confirms /predict writes a predictions row. The live test currently skips without credentials.
+Inspect what that test actually exercises. Prepare or fix it if it does not verify /predict persistence. Do not run a live write without explaining the exact test request and obtaining my authorization. Existing public UI logging messages are useful evidence but do not substitute for the required pytest test.
+Never weaken tests, manufacture green results, or expose credentials.
+
+7. Professional documentation — 8%
+Verify pitch, URLs, Supabase reference, architecture, accurate owners, intended use, limitations, fairness, feature importance, and persisted/not-persisted statement.
+Check individual report/video links and access status. Emma’s video:
+https://www.loom.com/share/2e1f5555063d4be2b7c983668f2c66b0
+Emma’s report: reports/emma-report.md.
+Komal’s full name: Komal Khan.
+Do not create or attribute Komal’s report/video as completed unless supplied.
+
+8. Participation — 16%
+Verify per-member contribution bullets, task lists, meaningful Git history, and remaining required evidence. Do not pad commits, change authorship, or infer contribution from branch names.
+Emma’s final UI fixes were accidentally pushed to komal-frontend; they remain Emma’s work.
+Identify any unmet course expectation for eight meaningful commits without inventing evidence.
+
+9. Ethics — 8%
+Check Emma’s report is 600–1,000 words and ties actual FPR/FNR gaps to a specific deployment context.
+Clearly state that Female records have the worse false-negative rate and Male records the worse false-positive rate; avoid claiming one group is universally worse on every metric.
+Name at least two concrete mitigations and explain responsible evaluation.
+Strengthen the Deuteronomy 1:17 reflection to state explicitly what is owed to the disadvantaged group before deployment: transparent disclosure, investigation of disparities, validation of mitigation, and safeguards against harmful automated decisions. Connect this to an illustrative employment or workforce-services context without endorsing actual high-stakes use.
+Preserve the educational-only limitation and distinguish proposed mitigations from implemented ones.
+Do not invent personal experiences or claim Emma performed work not supported by evidence.
+
+10. AI records and submission
+Check complete transcripts for all tools, prompt examples, integration/adaptation notes, and learning/reflection requirements.
+Preserve original transcripts. Summaries and placeholders must not be labeled complete transcripts.
+Identify missing Claude and ChatGPT/Codex sessions, including report and video-script assistance and this audit.
+Append this session to the appropriate ongoing record where reliable history is available.
+Check the attached instructions for submission format. If Word/PDF documentation is required in addition to the Markdown report, prepare the required export if tooling permits and verify it; flag uncertainty between general announcements and the specific assignment.
+Verify both individual reports are 600–1,000 words and videos 3–5 minutes where the files or metadata are available. Do not claim duration or accessibility without checking.
+
+Finish with:
+- Necessary fixes implemented and their verification.
+- A short, prioritized list of remaining grade risks.
+- Exact steps I must perform, including any SQL query, authorized live test, missing transcript, partner deliverable, commit/push, or deployment check.
+- A submission checklist with no falsely completed items.
+
+Focus on evidence and real requirements, not cosmetic improvements or a blanket “everything meets Target” claim.
+
+
+### Claude
+
+I'll start by reading the repo instructions, the attached rubric/instructions, and the current state of the project.
+
+**Bash**: Inspect repo structure and history
+
+**Bash**: Look for rubric and instruction documents
+
+**Bash**: Read project instructions and check docx tooling
+
+**Bash**: Extract Topic 2 rubric text
+
+**Bash**: Look for Topic 2 assignment instructions
+
+**Bash**: Read README
+
+**Bash**: Read original template README (assignment spec)
+
+Found the Topic 2 rubric (in `../Rubrics/`) and the course instructions. Now reading the rest of the project: tests, CI, SQL migration, Concepts tab, report, and AI records.
+
+**Bash**: Read CI workflow, live test, migration, conftest
+
+**Bash**: Read db layer and API endpoints
+
+**Bash**: List secret variable names only (values redacted)
+
+No Postgres connection string or `psql` is available (only PostgREST keys), so raw SQL can't be executed from here. Running the test suite next.
+
+**Bash**: Run offline test suite
+
+209 passed, 1 skipped (the live test). Checking which tests cover the specific required behaviors.
+
+**Bash**: List API test names and key assertions
+
+Test coverage for the required behaviors looks solid. Now checking the Concepts tab math (criterion 1).
+
+**Bash**: Read Concepts tab
+
+**Bash**: Skim Performance and Bias Audit tab text
+
+**Bash**: Read interpretation and mitigation text
+
+**Bash**: Read Emma's report and count words
+
+**Bash**: Check model card owners and required sections
+
+Report is 818 words; ethics section needs a specific deployment context and a more explicit Deuteronomy 1:17 reflection. Now the AI-documentation folder.
+
+**Bash**: Inspect AI documentation files
+
+**Bash**: Count commits per author and list session logs
+
+Emma has 16 non-merge commits; Komal has 1, which is a participation risk I can't fix. Next, checking where the Oct 4 transcript ends and what the session log holds past that point.
+
+**Bash**: Inspect format and end of current transcript
+
+**Bash**: Check history of AI documentation files
+
+The ChatGPT/Codex placeholder that the index links to was never created. Next, checking the comparison SQL against the persisted runs rows and the schema.
+
+**Bash**: Inspect persisted runs rows for the comparison
+
+Query columns match the schema and persisted rows. Now a read-only check of the live public API and the anon-readable `runs` table (REST, recorded as REST, not SQL). Key values are not printed.
+
+**Bash**: Query live public API read-only endpoints
+
+**Bash**: Read-only REST read of runs via anon key
+
+**Bash**: Compute and verify numerical XOR backprop step
+
+**Bash**: Find UI tests touching Concepts/Performance text
+
+Now editing the Concepts tab: an explicit chain-rule derivation, a linear-boundary impossibility argument, and the fixed numerical backprop step.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+Now the XOR section: the linear-boundary argument and the numerical step.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+Now the render function for the step, placed before `render`.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+**Bash**: View existing XOR test for style
+
+Adding tests for the numerical example (fixed values plus a finite-difference gradient check).
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/tests/test_ui_data.py
+
+**Bash**: Check test imports
+
+**Bash**: Add numpy import and run UI tests
+
+UI tests pass (46). AppTest can't catch bad LaTeX, so I'll try rendering the Concepts tab in a headless browser if one is available.
+
+**Bash**: Check for headless browser and node
+
+**Bash**: Start local Streamlit app in background
+
+**Bash**: Render app headlessly and check for KaTeX errors
+
+Streamlit's websocket didn't render under `--dump-dom`. Trying `puppeteer-core` (small install in the scratchpad) driving the existing Chrome.
+
+**Bash**: Render Concepts tab with puppeteer and check KaTeX
+
+No KaTeX errors and no exceptions. Viewing the screenshots to confirm it reads correctly.
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/shot_step.png
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/shot_bp.png
+
+The numerical step renders correctly, but the δ₁ line overflows at 1300px (∂L/∂b₁ is cut off). Splitting it into two lines.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_concepts.py
+
+**Bash**: Re-render and check overflow of LaTeX blocks
+
+The running app was still serving the old module. Restarting Streamlit and re-checking.
+
+**Bash**: Restart Streamlit and re-check rendering
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/shot_chain.png
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/shot_line.png
+
+Everything renders cleanly. One cosmetic issue: `z_i = Σ_j` shows literal underscores. Fixing that, then moving on to the Performance-tab interpretation.
+
+**Bash**: Replace literal underscores with Unicode subscripts
+
+**Bash**: Check per-class code and tests for the harder-class text
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ui/tab_performance.py
+
+**Bash**: Find training-split class counts in artifacts
+
+Checking the two factual claims in that caption: no class weighting in the loss, and roughly 3:1 imbalance in train.
+
+**Bash**: Verify loss weighting and class balance
+
+Confirmed: unweighted `BCEWithLogitsLoss`, and 11,687 of 48,842 rows are >50K (23.9%, about 3.2:1). Now the live `/predict` persistence test. Checking what `/predict` returns first.
+
+**Bash**: Read predict endpoint and response schema
+
+I'll add a live test, gated behind a second opt-in variable, that POSTs the reference profile to `/predict` and reads the new `predictions` row back. It will not run unless you set that variable.
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/tests/test_supabase_roundtrip.py
+
+**Bash**: Check request_hash signature
+
+The hash is computed on the validated record, so I need to confirm that hashing the raw fixture gives the same value. Checking with the offline client.
+
+**Bash**: Probe that raw-feature hash equals API hash (offline)
+
+Hashing the raw fixture matches the API's hash. Before running the read-only live test with the local `.env` credentials, I'm confirming that app startup performs no writes.
+
+**Bash**: Confirm startup path has no DB writes
+
+The only writes are in `/predict` and `/predict_batch`. Running the live file now: the read-only test runs and the write test should skip.
+
+**Bash**: Run read-only live test; write test stays skipped
+
+**Bash**: Run CI on every branch push; list GitHub runs
+
+`gh` works, and there's a remote commit "Add files via upload" on `main` that isn't in my local checkout. Fetching (updates remote refs only, nothing merged) to see what it is.
+
+**Bash**: Fetch remote and inspect new commit and CI runs
+
+Komal pushed `reports/komal-report.md` to `main` at 16:58. I won't pull, since your working tree has my uncommitted edits. I'll read it from `origin/main` instead.
+
+**Bash**: Read Komal's report from remote and count words
+
+**Bash**: Word counts excluding tables
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/emma-report.md
+
+API Error: Your computer went to sleep mid-response. The response above may be incomplete.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/emma-report.md
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/emma-report.md
+
+**Bash**: Recount Emma report words
+
+That's over 1,000 words, so I'll trim about 70 words from the earlier technical sections without dropping evidence.
+
+**Read**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/emma-report.md
+
+**Bash**: Trim report wording and recount
+
+Body is 977 words, but 1,010 if the title and headings count. Trimming a little more for margin.
+
+**Bash**: Further trim and recount
+
+**Bash**: Final trim and recount
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/db/queries/runs_comparison.sql
+
+Checking the query with the real PostgreSQL parser (`pglast` / libpg_query) in a scratch venv, and simulating its ordering over the persisted rows.
+
+**Bash**: Parse SQL with Postgres parser and simulate ordering
+
+**Bash**: Update README SQL provenance, interpretation, tests, CI
+
+Correction: at full precision `baseline` (0.907413) edges out `deep` (0.907392) on ROC-AUC, so my sentence crediting `deep` was wrong. Fixing it.
+
+**Bash**: Fix ROC-AUC comparison wording
+
+Now the Team section: linking Komal's report, which is on `origin/main` as `8bee7fa`.
+
+**Bash**: Link Komal's report in README Team section
+
+Checking MODEL_CARD.md for claims that now conflict (SQL comparison, CI, tests).
+
+**Bash**: Grep model card for conflicting claims
+
+**Bash**: Read model card harder-class text
+
+Model card is consistent and makes no causal overclaim. Running the full suite after all code edits.
+
+**Bash**: Run full offline test suite
+
+211 passed, 2 skipped. Checking that the Performance tab renders the new text in the browser.
+
+**Bash**: Screenshot Performance tab confusion matrix section
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/shot_perf.png
+
+The sidebar build changed from `93e6c0a` to `71914bf`, which I didn't create. Checking whether new commits landed locally or on the remote.
+
+**Bash**: Check for new commits and API build SHA
+
+Two more remote commits landed while I worked, one of which touches the README task list. Inspecting them so my local README edits can be reconciled.
+
+**Bash**: Inspect remote commits and README diff
+
+**Bash**: Fast-forward main and reapply local edits
+
+Conflict in README as expected. Resolving it by keeping Komal's lines as she wrote them.
+
+**Bash**: Show README conflict hunks
+
+**Bash**: Resolve README conflict keeping Komal's lines
+
+Local `main` is now at `71914bf` with my edits on top. The stash `audit-edits-before-ff` is kept as a backup. Rechecking Komal's revised report.
+
+**Bash**: Recount Komal report and check for video link
+
+**Bash**: List Komal report headings
+
+Komal's report is about 943 words excluding tables, 1,036 including them, so it's borderline. Next, checking Emma's Loom video is publicly reachable and how long it runs.
+
+**Bash**: Fetch Loom share page metadata
+
+**Bash**: Query Loom oEmbed for duration
+
+**Bash**: Inspect session log structure and turns
+
+**Bash**: List tail of previous session log
+
+**Bash**: View transcript format details
+
+Writing an exporter that matches this format: verbatim prompts and replies, one line per tool call, no tool output or reasoning, and a credential scan.
+
+**Write**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/export_session.py
+
+**Bash**: Export remainder of previous session log
+
+The export works (no credentials or e-mails found). Gathering Emma's actual prompts from all session logs to build a prompt-examples file with verbatim excerpts.
+
+**Bash**: List Emma's prompts across session logs
+
+Two of Emma's prompts show her own design decisions: the feature choices and redefining the third configuration to isolate architecture. Pulling their full text for verbatim excerpts.
+
+**Bash**: Print two decision prompts verbatim
+
+Writing the AI-documentation files now. All are clearly labeled, and nothing is presented as a transcript unless it is one.
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/emma-chatgpt-codex-assistance.md
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/prompts_used.md
+
+Fixing quote characters in excerpt 1 so it matches the log exactly, then checking every excerpt against the logs programmatically.
+
+**Bash**: Verify prompt excerpts are verbatim
+
+The one mismatch is an apostrophe style (the log uses ’). Fixing it.
+
+**Bash**: Fix apostrophe in verbatim excerpt
+
+Now the integration/assistance log. It is based on Git and the transcripts, and the reflection section is left for Emma to write.
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/ai_assistance_log.md
+
+The "Followed" bullet attributes choices to the AI that I can't confirm from the logs. Replacing it with a statement I can support.
+
+**Edit**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/ai-documentation/ai_assistance_log.md
+
+**Bash**: Update AI documentation index
+
+**Bash**: Check for markdown converter
+
+**Bash**: Export Emma report to PDF and verify text
+
+**Bash**: Check educational-use sentence in PDF
+
+The PDF text is correct; my keyword just didn't match ("education" vs "educational"). Taking a quick look at the layout.
+
+**Read**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/emma-report.pdf
+
+**Bash**: Screenshot the report HTML source of PDF
+
+**Read**: /private/tmp/claude-501/-Users-emmarogoveanu-Desktop-school-search-engines---data-mines-projects-cst-435-topic-2/59d43f0d-7a54-4c9f-bc3b-8fa48922eaee/scratchpad/report_html.png
+
+PDF looks right: 3 pages, 990 words. Now writing the audit report.
+
+**Write**: /Users/emmarogoveanu/Desktop/school/search engines & data mines/projects/cst-435-topic-2/reports/final-rubric-audit.md
+
+Correcting Emma's commit count: there are 15 non-merge commits, not 16. One is the template import and four are transcript-only, so about 10 are substantive.
+
+**Bash**: Verify and correct Emma commit count
+
+Stopping the local preview, running the full suite once more, then appending this session to the Oct 4 transcript as the last step.
+
+**Bash**: Stop preview, run suite, show status
+
+**Bash**: Append exports to the Oct 4 transcript and scan
+
+
+_[Export ends here, while prompt 10 was still in progress. The final reply of prompt 10 is not included above. Append it before submission, or note that it is missing.]_
