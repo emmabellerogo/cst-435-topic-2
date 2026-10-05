@@ -1,5 +1,5 @@
-# Komal Khan — Engineering Report
-**Income Insight · CST-435 Topic 2**
+# Komal Khan — Report
+**Income Insight - CST-435 Topic 2**
 
 ## 1. About the App
 
@@ -25,12 +25,10 @@ I built the first full version of the Streamlit app, using the API handoff from 
 - **Model Card tab** — one-page summary of the model
 - **First frontend tests** — `test_ui_app.py`, `test_ui_api_client.py`, `test_ui_data.py`
 
-**Design choices I followed:**
-- The website is a **thin client**: it never loads the model
+**Design choices:**
+- The website is a thin client: it never loads the model
 - Every prediction goes through the API, so everyone uses the same model
 - The tabs show weak spots (confusion matrix, bias numbers), not just good scores
-
-**Not my work:** the backend, model training, and the later UI fixes (learning curves, direct Supabase audit display) were done by Emma.
 
 ## 3. Decision Justifications
 
@@ -40,13 +38,13 @@ The team tested three setups with the same data split, seed and settings:
 
 | Setup | Layers | Activation | Validation loss |
 |---|---|---|---:|
-| GELU ✅ | [64, 32] | GELU | **0.3156** |
+| GELU  | [64, 32] | GELU | **0.3156** |
 | Deep | [128, 64, 32] | ReLU | 0.3158 |
 | Baseline | [64, 32] | ReLU | 0.3163 |
 
-- GELU had the **lowest validation loss**, which was our rule set before training
+- GELU had the lowest validation loss, which was our rule set before training
 - ReLU cuts every negative value to zero; GELU is smoother and lets small negatives through a little
-- **Honest note:** the gap is tiny and from one run, and the baseline had slightly higher accuracy. GELU won this test, but it is not proof that GELU is always better.
+- Note: the gap is tiny and from one run, and the baseline had slightly higher accuracy. GELU won this test, but it is not proof that GELU is always better.
 
 ### (b) Which class is harder
 
@@ -57,8 +55,8 @@ Test results: **85.4% accuracy**, ROC-AUC **0.906**
 | **Actual ≤50K** | 5,180 | 394 |
 | **Actual >50K** | 676 | 1,077 |
 
-- The **>50K class is harder**
-- The model missed **676 of 1,753** real high earners (recall 0.61)
+- The >50K class is harder
+- The model missed 676 of 1,753 real high earners (recall 0.61)
 - For ≤50K, recall is much better (0.93)
 - Why: only about 1 in 4 people in the data earn over $50K
 - High accuracy can hide this, so the app shows per-class results
@@ -72,8 +70,8 @@ Permutation importance (drop in ROC-AUC when a feature is shuffled):
 3. Age — 0.034
 4. Education level — 0.033
 
-- These are what the model **relies on**
-- They do **not** prove what causes someone's income
+- These are what the model relies on
+- They do **not** prove what causes someone income
 
 ## 4. Fairness Check
 
@@ -88,7 +86,7 @@ From our Supabase SQL audit on the labeled test rows:
 - Women who earn over $50K are **missed more often** (41.5% vs 38.0%)
 - Men who earn less are **wrongly marked high more often** (9.9% vs 2.7%)
 
-**Why it happens:**
+**Why it actually happens:**
 - The model never sees sex, but "relationship" (Husband/Wife) and marital status act as stand-ins
 - Base rates differ: 10.9% of women vs 30.4% of men earn over $50K
 
@@ -106,31 +104,19 @@ From our Supabase SQL audit on the labeled test rows:
 - I used Claude to help write the frontend code
 - I directed the work and reviewed what was built
 - The full session transcript is saved in `ai-documentation/` so anyone can check it
-- I only claim the work I did; Emma's parts are named as hers
-
-**Being honest about testing**
-- I wrote the frontend tests in my AI session
-- The transcript does not show them being run, so I am not claiming they passed on my side
-- The team's GitHub Actions run (set up by Emma) is the record that the suite passes
 
 **Honest data and results**
 - Every number in this report comes from the saved project results, not guesses
 - The test set was used **only once**, after the model was picked, so the scores are fair
 - We show the bad numbers (missed high earners, bias gap), not just the good ones
 
-**Limits we admit**
-- The data is from 1994, and $50K meant something very different then
-- The data carries old patterns of inequality
-- The prediction log stores a hash of inputs, but that is **not** true anonymization
-- The website uses only the read-only anon key; the secret key stays on the API
+**Limits**
+- Data is from 1994, and $50K meant something very different then
+- Data carries old patterns of inequality
+- Prediction log stores a hash of inputs, but that is **not** true anonymization
+- Website uses only the read-only anon key; the secret key stays on the API
 
 ## 6. Faith and Fairness
-
-**The duty:** Deuteronomy 1:17 says, *"You shall not be partial in judgment."* Our model is partial, even if no one meant it to be.
-
-**Who our model treats worse:** women who earn over $50K. It misses 41.5% of them, so their real success often goes unseen.
-
-**Three verses that shape what I think we owe them:**
 
 - **Proverbs 11:1 — honest scales.** God hates a false balance. A model is a kind of scale. If it weighs women and men differently, it is a false balance, and we must fix it before we use it.
 - **Proverbs 31:8–9 — speak up for others.** We are told to speak for people who cannot speak for themselves. The women in this data cannot see the model or argue with it. As builders, it is our job to point out the gap for them, which is why the Bias Audit tab shows it openly.
