@@ -405,7 +405,7 @@ happened on GitHub, Render, Streamlit Cloud or a local machine).
 ### Komal Khan
 
 - **Individual report:** [reports/komal-report.md](reports/komal-report.md)
-- **Video:** TODO: add individual demonstration video link before submission.
+- **Video:** <https://www.loom.com/share/bfb13bc55b424131b43442f91dbbbba5>
 - **Contributions:**
   - Built the initial six-tab Streamlit frontend in a Claude session, against Emma's
     API handoff. Komal's commit `f34683e` adds `ui/`, and
